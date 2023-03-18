@@ -154,36 +154,8 @@ while True:
         
         #pandas_dataframe = data
         dataframe = pd.DataFrame(data)
-        
-
-        #gui = show(dataframe)
-
-        # table_layout = [
-        #     [
-        #         sg.Table(values=table_values, headings=table_headers, justification='center', enable_events = True, enable_click_events=True, key='-Table-')
-        #     ],
-        #     [
-        #         sg.Button('Finish')
-        #     ]
-        # ]
-       
-
-        # t_window = sg.Window('Table', table_layout)
-        
-        # while True:
-        #     t_event, t_values = t_window.read()
-        #     if t_event == "Finish" or t_event == sg.WIN_CLOSED:
-        #         break
-        #     if t_event == '-Table-':
-        #         print('Table Clicked')
-        #         py_table = t_window['-Table-']
-        #         clicked_values = py_table.get_last_clicked_position()
-        #         #print(f'X values: {t_values.x} \t Y value: {t_values.y}')
-        #         #print(clicked_values)
-        #         #print(t_values['-Table-'].get)
-        #         print(clicked_values)
         t_data = te.table_editor(dataframe)
-        print(dataframe)
+        print(t_data)
 
     if event == 'Print':
         print('Printing')

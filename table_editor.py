@@ -1,6 +1,16 @@
 import PySimpleGUI as sg
 import pandas as pd
 
+
+def get_dataframe_data(dataframe):
+    table_headers = dataframe.columns
+    table_headers = table_headers.values
+    table_values = dataframe.to_numpy()
+    data = table_values.tolist()
+    headings = list(table_headers)
+    return headings, data
+
+
 # TKinter function to display and edit value in cell
 def edit_cell(dataframe, window, key, row, col, justify='left'):
 
@@ -74,15 +84,17 @@ def table_editor(dataframe):
 
     edit = False
 
-    table_headers = dataframe.columns
-    table_headers = table_headers.values
-    table_values = dataframe.to_numpy()
-    data = table_values.tolist()
-    headings = list(table_headers)
+    headings, data = get_dataframe_data(dataframe)
 
     #headings, data = generate_table_data()
     sg.set_options(dpi_awareness=True)
-    layout = [[sg.Table(values=data, headings=headings, max_col_width=25,
+    layout = [[
+            sg.Button('Add Row'),
+            sg.Button('Delete Row'),
+            sg.Button('Undo Delete')
+        ],
+        [
+            sg.Table(values=data, headings=headings, max_col_width=25,
                         font=("Arial", 15),
                         auto_size_columns=True,
                         # display_row_numbers=True,
@@ -96,18 +108,25 @@ def table_editor(dataframe):
                         expand_x=True,
                         expand_y=True,
                         enable_click_events=True,  # Comment out to not enable header and other clicks
-                        )],
+                        )
+        ],
 
-              [sg.Button('Finish'), sg.Text('Cell clicked:'), sg.T(key='-CLICKED_CELL-')]]
+        [
+            sg.Button('Finish'), 
+            sg.Text('Cell clicked:'), 
+            sg.T(key='-CLICKED_CELL-')
+        ]]
 
 
     window = sg.Window('Clickable Table Element', layout, resizable=True, finalize=True)
-    new_data = None
+    row = None
+    last_del_row = None
+    last_del_data = None
     while True:
-        print()
+        #print()
         event, values = window.read()
         if event in (sg.WIN_CLOSED, 'Finish'):
-            window.refresh()
+            #window.refresh()
             break
         # Checks if the event object is of tuple data type, indicating a click on a cell'
         elif isinstance(event, tuple):
@@ -118,8 +137,37 @@ def table_editor(dataframe):
             # Displays that coordinates of the cell that was clicked on
             window['-CLICKED_CELL-'].update(cell)
             edit_cell(dataframe, window, '-TABLE-', row+1, col, justify='right')
+        elif event == 'Add Row':
+            new_row = {}
+            for header in headings:
+                new_row[header] = 'NULL'
+            #dataframe.append(new_row)
+            #print(new_row)
+            new_data_frame = pd.DataFrame(new_row, index=[0])
+            #print(new_data_frame)
+            dataframe = pd.concat([dataframe, new_data_frame], ignore_index=True)
+            headings, data = get_dataframe_data(dataframe)
+            window['-TABLE-'].update(values=data)
+        elif event == 'Delete Row':
+            if row is not None:
+                last_del_data = dataframe.iloc[row]
+                last_del_row = row
+                dataframe = dataframe.drop(row)
+                dataframe = dataframe.sort_index().reset_index(drop=True)
+                headings, data = get_dataframe_data(dataframe)
+                window['-TABLE-'].update(values=data)
+            else:
+                print('No row selected')
+        elif event == 'Undo Delete':
+            if last_del_row is not None:
+                dataframe.loc[last_del_row-0.5] = last_del_data
+                dataframe = dataframe.sort_index().reset_index(drop=True)
+                last_del_row = None
+                last_del_data = None
+                headings, data = get_dataframe_data(dataframe)
+                window['-TABLE-'].update(values=data)
+            else:
+                print('No row deleted')
 
     window.close()
-    #return new_data
-
-#generate_table()
+    return dataframe
