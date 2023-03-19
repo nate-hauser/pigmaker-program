@@ -29,11 +29,11 @@ title = "Bread/Farrow Data Uploader"
 #Start and End date row
 date_layout = [
     sg.Text('Start'), 
-    sg.In(size=(10,1), enable_events=True, key='Start_Date'),
+    sg.In(size=(10,1), enable_events=True, key='-Start Date-'),
     sg.CalendarButton('Select Date', format='%Y-%m-%d'),
     sg.Text('\t'),
     sg.Text('End'),
-    sg.In(size=(10,1), enable_events=True, key='End_Date'),
+    sg.In(size=(10,1), enable_events=True, key='-End Date-'),
     sg.CalendarButton('Select Date', format='%Y-%m-%d')
 ]
 
@@ -75,6 +75,8 @@ layout = [
 window = sg.Window(title, layout)
 breed_file = None
 farrow_file = None
+start_date = None
+end_date = None
 
 while True:
     event, values = window.read()
@@ -90,7 +92,7 @@ while True:
 
         #Have user Validate
         dataframe = pd.DataFrame(data)
-        t_data = te.table_editor(dataframe)
+        t_data = te.table_editor(dataframe, [[1,1], [2,2]])
         print(t_data)
 
         #FUNCTION CALL: data_good = check_data(df)
@@ -106,5 +108,9 @@ while True:
         #print(breed_file)
     elif event == '-Farrow File-':
         farrow_file = window['-Farrow File-'].get()
+    elif event == '-Start Date-':
+        start_date = window['-Start Date-'].get()
+    elif event == '-End Date-':
+        end_date = window['-End Date-'].get()
 
 
