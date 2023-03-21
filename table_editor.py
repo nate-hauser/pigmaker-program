@@ -10,48 +10,59 @@ def get_dataframe_data(dataframe):
     headings = list(table_headers)
     return headings, data
 
-def highlight_cell(t_window, key, row, col):
+def highlight_cells(t_window, key):
+    global error_widgets, error_cells
+
     root = t_window.TKroot
-    print(root)
-    # Gets the Widget object from the PySimpleGUI table - a PySimpleGUI table is really
+    #print(root)
+     # Gets the Widget object from the PySimpleGUI table - a PySimpleGUI table is really
     # what's called a TreeView widget in TKinter
     table = t_window[key].Widget
-    # Return x and y position of cell as well as width and height (in TreeView widget)
-    x, y, width, height = table.bbox(row, col)
-    print(x,y)
-    x_offset = 5
-    y_offset = 35
-    x+= x_offset+width-20
-    y+= y_offset
-    tri_points = [0,0,width,height]
-    # i = 0
-    # while i < len(tri_points):
-    #     if i % 2 == 0:
-    #         tri_points[i]+= x
-    #     else:
-    #         tri_points[i]+= y
-    #     i+= 1
-    triangle = sg.tk.Canvas(root)
-    triangle.create_rectangle(tri_points, fill='red')
-    triangle.place(x=x, y=y)
-    #triangle.pack()
 
-    
+    #remove any current squares
+    for wid in error_widgets:
+        if wid is not None:
+            wid.destroy()
+    #clear error widget list
+    error_widgets = []
+
+    #for each error cell create a red square to be displayed
+    for cell in error_cells:
+        row = cell[0]+1
+        col = cell[1]
+        x, y, width, height = table.bbox(row, col)
+        #offsets to adjust for new window
+        x_offset = 5
+        y_offset = 35
+        x+= x_offset+width-10
+        y+= y_offset
+
+        #Create red square
+        rect_points = [0,0,10,10]
+        rect = sg.tk.Canvas(root, height=10, width=10, bg='red', bd=.1)
+        rect.create_rectangle(rect_points, fill='red', outline='red')
+        rect.pack()
+        rect.place(x=x, y=y)
+
+        #add to widgets list
+        error_widgets.append(rect)
 
 # TKinter function to display and edit value in cell
 def edit_cell(dataframe, t_window, key, row, col, justify='left'):
 
-    global textvariable, edit, new_error_loc
+    global textvariable, edit, error_cells
+    global cell_font
 
     def callback(event, row, col, text, key, dataframe):
-        global edit, new_error_loc
+        global edit, error_cells
+        orig_text = text
         # event.widget gives you the same entry widget we created earlier
         widget = event.widget
         if key == 'Focus_Out':
             # Get new text that has been typed into widget
             text = widget.get()
             # Print to terminal
-            print(text)
+            #print(text)
         # Destroy the entry widget
         widget.destroy()
         # Destroy all widgets
@@ -64,14 +75,18 @@ def edit_cell(dataframe, t_window, key, row, col, justify='left'):
         dataframe.iloc[row-1, col] = text
         #print(dataframe)
         table.item(row, values=values)
-        i = 0
-        pos = [row-1, col]
-        while i < len(new_error_loc):
-            if pos[0] == new_error_loc[i][0] and pos[1] == new_error_loc[i][1]:
-                new_error_loc.pop(i)
-                #print('Delete')
-                continue
-            i+= 1
+
+        #if text changed then remove canvas object
+        if orig_text != text:
+            i = 0
+            pos = [row-1, col]
+            while i < len(error_cells):
+                if pos[0] == error_cells[i][0] and pos[1] == error_cells[i][1]:
+                    error_cells.pop(i)
+                    error_widgets[i].destroy()
+                    error_widgets.pop(i)
+                    continue
+                i+= 1
         edit = False
 
     if edit or row <= 0:
@@ -88,14 +103,28 @@ def edit_cell(dataframe, t_window, key, row, col, justify='left'):
     text = table.item(row, "values")[col]
     # Return x and y position of cell as well as width and height (in TreeView widget)
     x, y, width, height = table.bbox(row, col)
-    print(x,y)
+    #print(x,y)
     x_offset = 5
     y_offset = 35
     x+= x_offset
     y+= y_offset
 
+    i = 0
+    pos = [row-1, col]
+    # print(pos)
+    # print(error_cells)
+    while i < len(error_cells):
+        if pos[0] == error_cells[i][0] and pos[1] == error_cells[i][1]:
+            #error_cells.pop(i)
+            error_widgets[i].pack_forget()
+            #error_widgets.pop(i)
+            print('Hide')
+            # print(error_cells)
+        i+= 1
+
     # Create a new container that acts as container for the editable text input widget
     frame = sg.tk.Frame(root)
+    #print(frame)
     # put frame in same location as selected cell
     frame.place(x=x, y=y, anchor='nw', width=width, height=height)
 
@@ -104,7 +133,8 @@ def edit_cell(dataframe, t_window, key, row, col, justify='left'):
     textvariable.set(text)
     # Used to acceot single line text input from user - editable text input
     # frame is the parent t_window, textvariable is the initial value, justify is the position
-    entry = sg.tk.Entry(frame, textvariable=textvariable, justify=justify, font=28)
+    entry = sg.tk.Entry(frame, textvariable=textvariable, justify=justify, font=(f'Arial {cell_font}'))
+    #print(entry)
     # Organizes widgets into blocks before putting them into the parent
     entry.pack()
     # selects all text in the entry input widget
@@ -121,11 +151,23 @@ def edit_cell(dataframe, t_window, key, row, col, justify='left'):
 
 def table_editor(dataframe, error_loc):
     global edit
-    global new_error_loc
+    global error_cells, error_widgets
+    global cell_font
 
+    cell_font = 20
     edit = False
-    new_error_loc = error_loc
+    error_cells = error_loc
     headings, data = get_dataframe_data(dataframe)
+
+    column_widths = []
+    max_col = 10
+    for header in headings:
+        width = len(header)
+        if width > max_col:
+            width = max_col
+        column_widths.append((width))
+    
+    #print(column_widths)
 
     #headings, data = generate_table_data()
     sg.set_options(dpi_awareness=True)
@@ -135,9 +177,11 @@ def table_editor(dataframe, error_loc):
             sg.Button('Undo Delete')
         ],
         [
-            sg.Table(values=data, headings=headings, max_col_width=25,
-                        font=("Arial", 20),
-                        auto_size_columns=True,
+            sg.Table(values=data, headings=headings, 
+                        #max_col_width=8,
+                        font=("Arial", cell_font),
+                        auto_size_columns=False,
+                        col_widths=column_widths,
                         # display_row_numbers=True,
                         justification='center',
                         num_rows=20,
@@ -164,32 +208,41 @@ def table_editor(dataframe, error_loc):
     row = None
     last_del_row = None
     last_del_data = None
+    isOK = True
+    error_widgets = []
+    first_scan = True
     while True:
         #print()
+        #highlight_cells(t_window, '-TABLE-', error_cells)
+        if first_scan:
+            false_event, false_values = t_window.read(timeout=100)
+            highlight_cells(t_window, '-TABLE-')
+            first_scan = False
         event, values = t_window.read()
-        #highlight_cell(t_window, '-TABLE-', new_error_loc[0], new_error_loc[1])
+        highlight_cells(t_window, '-TABLE-')
+
         if event in (sg.WIN_CLOSED, 'Finish', 'Cancel'):
-            #t_window.refresh()
             if event == 'Finish':
-                if len(new_error_loc) > 0:
+                if len(error_cells) > 0:
                     print('More edits to be made at')
-                    for i in new_error_loc:
+                    for i in error_cells:
                         print(f'\t{i}')
-                    #ADD PROMPT FOR CONTINUE ANYWAY
+                    popup = sg.popup_yes_no('More edits required.\nContinue anyway?', title='Close Table')
+                    if popup == 'Yes':
+                        break
                     continue
-            
-            #ADD LOGIC FOR CANCEL
+            if event == 'Cancel' or event==sg.WIN_CLOSED:
+                isOK = False
 
             break
         # Checks if the event object is of tuple data type, indicating a click on a cell'
         elif isinstance(event, tuple):
             if isinstance(event[2][0], int) and event[2][0] > -1:
                 cell = row, col = event[2]
-                print(row)
-
-            # Displays that coordinates of the cell that was clicked on
-            t_window['-CLICKED_CELL-'].update(cell)
-            edit_cell(dataframe, t_window, '-TABLE-', row+1, col, justify='right')
+                #print(row, col)
+                # Displays that coordinates of the cell that was clicked on
+                t_window['-CLICKED_CELL-'].update(cell)
+                edit_cell(dataframe, t_window, '-TABLE-', row+1, col, justify='right')
         elif event == 'Add Row':
             new_row = {}
             for header in headings:
@@ -220,5 +273,9 @@ def table_editor(dataframe, error_loc):
             else:
                 print('No row deleted')
 
+        #ADD A RESIZE EVENT TO AUTOMATICALLY MOVE CANVAS
+        elif event == '-Resize-':
+            print('Table Resized')
+
     t_window.close()
-    return dataframe
+    return dataframe, isOK

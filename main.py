@@ -92,8 +92,12 @@ while True:
 
         #Have user Validate
         dataframe = pd.DataFrame(data)
-        t_data = te.table_editor(dataframe, [[1,1], [2,2]])
+        t_data, isOK = te.table_editor(dataframe, [[1,1], [2,2]])
         print(t_data)
+        
+        #if cancelled then do not do further processing
+        if not isOK:
+            continue
 
         #FUNCTION CALL: data_good = check_data(df)
 
