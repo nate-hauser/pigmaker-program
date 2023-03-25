@@ -1,5 +1,6 @@
 import PySimpleGUI as sg
 import pandas as pd
+from datetime import datetime
 
 
 def get_dataframe_data(dataframe):
@@ -148,12 +149,21 @@ def edit_cell(dataframe, t_window, key, row, col, justify='left'):
     # lambda e generates an empty function, which is turned into an event function 
     # which corresponds to the "FocusOut" (clicking outside of the cell) event
     entry.bind("<FocusOut>", lambda e, r=row, c=col, t=text, k='Focus_Out', d = dataframe:callback(e, r, c, t, k, d))
+    # allow the Return to also trigger the event function
+    entry.bind("<Return>", lambda e, r=row, c=col, t=text, k='Focus_Out', d = dataframe:callback(e, r, c, t, k, d))
 
 def table_editor(dataframe, error_loc):
     global edit
     global error_cells, error_widgets
     global cell_font
 
+    datetime_str = '09/19/22 13:55:26'
+
+    datetime_object = datetime.strptime(datetime_str, '%m/%d/%y %H:%M:%S')
+
+    #print(type(datetime_object))
+
+    col_datatypes = []
     cell_font = 20
     edit = False
     error_cells = error_loc
@@ -262,6 +272,7 @@ def table_editor(dataframe, error_loc):
                 t_window['-TABLE-'].update(values=data)
             else:
                 print('No row selected')
+                sg.popup_auto_close('No row selected')
         elif event == 'Undo Delete':
             if last_del_row is not None:
                 dataframe.loc[last_del_row-0.5] = last_del_data
@@ -272,6 +283,7 @@ def table_editor(dataframe, error_loc):
                 t_window['-TABLE-'].update(values=data)
             else:
                 print('No row deleted')
+                sg.popup_auto_close('No row deleted')
 
         #ADD A RESIZE EVENT TO AUTOMATICALLY MOVE CANVAS
         elif event == '-Resize-':
