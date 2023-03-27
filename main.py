@@ -2,6 +2,7 @@ import PySimpleGUI as sg
 import os
 import pandas as pd
 import table_editor as te
+import pickle
 
 test = True
 #test = None
@@ -91,8 +92,9 @@ while True:
             #The uncert would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
 
         #Have user Validate
+        df = pd.read_pickle('testdf.pkl')
         dataframe = pd.DataFrame(data)
-        t_data, isOK = te.table_editor(dataframe, [[1,1], [2,2]])
+        t_data, isOK = te.table_editor(df, [[1,1], [2,2]])
         print(t_data)
         
         #if cancelled then do not do further processing

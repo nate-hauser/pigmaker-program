@@ -11,15 +11,20 @@ def get_dataframe_data(dataframe):
     headings = list(table_headers)
     return headings, data
 
+count = 0
+
 def highlight_cells(t_window, key):
     global error_widgets, error_cells
+    global count
 
+    count += 1
+    print(count)
     root = t_window.TKroot
     #print(root)
      # Gets the Widget object from the PySimpleGUI table - a PySimpleGUI table is really
     # what's called a TreeView widget in TKinter
     table = t_window[key].Widget
-
+    print(table)
     #remove any current squares
     for wid in error_widgets:
         if wid is not None:
@@ -31,7 +36,15 @@ def highlight_cells(t_window, key):
     for cell in error_cells:
         row = cell[0]+1
         col = cell[1]
-        x, y, width, height = table.bbox(row, col)
+        #print('cell', row, col)
+
+        #x, y, width, height = table.bbox(row, col)
+        box = table.bbox(row, col)
+        #print('box', box, len(box))
+        if len(box) == 0:
+            #print('Box is none')
+            continue
+        x, y, width, height = box
         #offsets to adjust for new window
         x_offset = 5
         y_offset = 35
@@ -222,8 +235,8 @@ def table_editor(dataframe, error_loc):
     error_widgets = []
     first_scan = True
     while True:
-        #print()
-        #highlight_cells(t_window, '-TABLE-', error_cells)
+        
+        #Initially show error locations
         if first_scan:
             false_event, false_values = t_window.read(timeout=100)
             highlight_cells(t_window, '-TABLE-')
@@ -249,7 +262,7 @@ def table_editor(dataframe, error_loc):
         elif isinstance(event, tuple):
             if isinstance(event[2][0], int) and event[2][0] > -1:
                 cell = row, col = event[2]
-                #print(row, col)
+                print(row, col)
                 # Displays that coordinates of the cell that was clicked on
                 t_window['-CLICKED_CELL-'].update(cell)
                 edit_cell(dataframe, t_window, '-TABLE-', row+1, col, justify='right')
