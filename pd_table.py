@@ -20,6 +20,9 @@ class TableApp(Frame):
             return
 
 def table_editor(root, df, errors):
+
+    #ADD SAVE as PICKLE feature
+    
     global isOK, top, errors_left
     isOK = False
 

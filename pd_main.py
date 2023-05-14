@@ -53,9 +53,10 @@ def run_cmd():
 def fileBrowse(entry):
     
     filepath = filedialog.askopenfilename(initialdir = "/",
-                                          title = "Select a File")
-                                        #   filetypes = ("all files",
-                                        #                 "*.*"))
+                                          title = "Select a File",
+                                          filetypes = (("PDF files", "*.pdf"),
+                                                       ('Pickle files', '*.pkl'),
+                                                        ("all files", "*.*")))
     entry.delete(0, tk.END)
     entry.insert(0, filepath)
 
@@ -123,6 +124,9 @@ run_btn.grid(row=3, column=0, pady=20)
 
 close_btn = tk.Button(root, text='Close', width=15, command=root.destroy)
 close_btn.grid(row=3, column=1, pady=20)
+
+
+#ADD: Group number and Generate report button
 
 root.mainloop()
 
