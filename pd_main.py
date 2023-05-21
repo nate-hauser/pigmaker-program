@@ -14,7 +14,7 @@ def run_cmd():
     breed_file = breed_entry.get()
     farrow_file = farrow_entry.get()
 
-    #error checks on file inputs
+    # error checks on file inputs
 
     # if breed_file == '':
     #     print('Breed file is none')
