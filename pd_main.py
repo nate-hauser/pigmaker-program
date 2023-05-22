@@ -14,7 +14,8 @@ def run_cmd():
     breed_file = breed_entry.get()
     farrow_file = farrow_entry.get()
     group_num = group_entry.get()
-    # error checks on file inputs
+
+    # **********************ERROR CHECKS**********************
 
     # if breed_file == '':
     #     print('Error: Breed file is none')
@@ -51,6 +52,12 @@ def run_cmd():
 
     #FUNCTION CALL: update_spreadsheet(new_breed_df, new_farrow_df)
 
+def gen_report():
+    print('Generating Report....................')
+
+    #ADD ERROR CHECKS
+    
+    #ADD FUNCTION CALL
 
 def fileBrowse(entry):
     
@@ -100,7 +107,7 @@ farrow_browse = tk.Button(root, text='Browse', width=10, command=lambda: fileBro
 farrow_browse.grid(row=1, column=5, padx=5)
 
 group_label = tk.Label(root, text='Group Number', fg='black', font=('Arial', 14))
-group_label.grid(row=2, column=0, pady=5)
+group_label.grid(row=2, column=0, pady=5, padx=5)
 
 group_entry = tk.Entry(root)
 group_entry.grid(row=2, column=1, pady=5)
@@ -133,6 +140,8 @@ run_btn.grid(row=4, column=0, pady=20, padx=5)
 close_btn = tk.Button(root, text='Close', width=15, command=root.destroy)
 close_btn.grid(row=4, column=1, pady=20)
 
+report_btn = tk.Button(root, text='Generate Report', width=15, command=gen_report)
+report_btn.grid(row=4, column=4, pady=20, padx=5)
 
 #ADD: Group number and Generate report button
 #TEST
