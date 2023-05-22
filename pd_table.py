@@ -5,7 +5,6 @@ from pandastable import Table, config
 class TableApp(Frame):
         """Basic test frame for the table"""
 
-        
         def __init__(self, df, errors=None, parent=None):
             self.parent = parent
             self.errors = errors
@@ -66,8 +65,29 @@ class TableApp(Frame):
                     #print(self.errors)
                 except:
                     return
-            
-           
+
+class popup_yes_no(Toplevel):
+
+    def __init__(self, text, *args, **kwargs):
+        super().__init__(*args, *kwargs)
+        # self.popup=Toplevel(root)
+        self.title('Yes/No popup')
+        self.response = False
+
+        Label(self, text=text, font=('Arial', 14)).grid(row=0, columnspan=2, column=0, pady=20)
+
+        Button(self, text='Yes', width=10, command=self.yes_clicked).grid(row=1, column=0, pady=20)
+        Button(self, text='No', width=10, command=self.no_clicked).grid(row=1, column=1, pady=20)
+
+    def yes_clicked(self, *args):
+        #print('Yes Clicked')
+        self.response = True
+        self.destroy() 
+        
+    def no_clicked(self, *args):
+       
+        #print('No clicked')
+        self.destroy()
 
 def table_editor(root, df, errors):
 
@@ -79,17 +99,26 @@ def table_editor(root, df, errors):
     errors_left = errors
     def done_table():
         global isOK
-        
         isOK = True
-        if len(errors_left) == 0:
+
+        if app.errors is None:
+            top.destroy()
+            return
+        
+        if len(app.errors) == 0:
             #isOK = True
             top.destroy()
             return
         else:
             print('Fix errors at:')
-            for e in errors_left:
+            for e in app.errors:
                 print(f'\t{e}')
-            top.destroy()
+
+            popup = popup_yes_no('Errors Present! Continue anyway?', top)
+            popup.wait_window()
+            #print(popup.response)
+            if popup.response:
+                top.destroy()
     
     def cancel_table():
         global isOK
@@ -103,17 +132,11 @@ def table_editor(root, df, errors):
 
     app = TableApp(df, errors, top)
 
-    # #highlight errors
-    # for e in errors:
-    #     app.table.setRowColors(rows=[e[0]],clr='#ed2939',cols=[e[1]])
-
     done_btn = Button(top, text='Done', width=15, command=done_table)
     done_btn.pack(anchor='center')
 
     cancel_btn = Button(top, text='Cancel', width=15, command=cancel_table)
     cancel_btn.pack(after=done_btn, pady=5)
-
-    #top.bind('<Return>', app.check_errors)
 
     top.wait_window()
 
