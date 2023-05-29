@@ -9,13 +9,12 @@ import sys
 
 TESTING = True
 
-# global breed_df
-# global farrow_df 
-# global merged_df
-
 breed_df = None
+breed_df_errors = None
 farrow_df = None
+farrow_df_errors = None
 merged_df = None
+merged_df_errors = None
 
 def run_cmd():
     global breed_df, farrow_df, merged_df
@@ -60,21 +59,12 @@ def run_cmd():
     if not isOK:
         return
 
-    #FUNCTION CALL: data_good = check_data(df)
 
-    #if data good, proceed
-
-    #ADD POPUP: ADD INFO TO MASTER SPREADSHEET?
-        #IF NO, PROMPT TO SAVE WORK
-
-    #FUNCTION CALL: update_spreadsheet(new_breed_df, new_farrow_df)
-
-
-def review_table(df, filepath, table_name='Table Data', file_function=None):
+def review_table(df, df_errors, filepath, table_name='Table Data', file_function=None):
 
     # **********************ERROR CHECKS**********************
-
-    # if df is None:
+    if df is None:
+        
         # if filepath == '':
         #     print('Error: file is none')
         #     return
@@ -82,51 +72,58 @@ def review_table(df, filepath, table_name='Table Data', file_function=None):
         #     print('Error: file does not exist')
         #     return
 
-    #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
-    # if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
-    #     df = pd.read_pickle(filepath)
-    # else:
-
-    #FUNCTION CALL: df_raw, df_errors = file_function(filepath) 
+        #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
+        if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
+            df_raw = pd.read_pickle(filepath)
+            df_errors_raw = None
+        else:
+            #FUNCTION CALL: 
+            #df_raw, df_errors = file_function(filepath) 
             # filepath would be a path to the pdf
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
 
-    #Have user Validate
+            #For testing purposes
+            df_raw = pd.read_pickle('testdf.pkl') #test df
+            df_errors_raw = [[1,1], [2,2]]
+    else:
+        df_raw = df
+        df_errors_raw = df_errors
 
-    #For testing purposes
-    df_raw = pd.read_pickle('testdf.pkl') #test df
-    df_errors = [[1,1], [2,2]]
-    #errors = None
+    #Open Table
+    df_new, df_errors_new, isOK = pdt.table_editor(root, df_raw, df_errors_raw, name=table_name)
 
-    df_new, df_errors_new, isOK = pdt.table_editor(root, df_raw, df_errors, name=table_name)
-
-    #if cancelled then do not do further processing
+    #if cancelled then do not do further processing and return original df
     if not isOK:
-        return df
+        return df, df_errors
+    
     df = df_new
-    return df
-    #print(df)
+    df_errors = df_errors_new
+    return df, df_errors
 
 def review_breed():
     
-    global breed_df
+    global breed_df, breed_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES BREED DF
-    breed_df = review_table(breed_df, breed_entry.get(), 'Breed Data', file_function=None)
+    breed_df, breed_df_errors = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', file_function=None)
 
 def review_farrow():
     
-    global farrow_df
+    global farrow_df, farrow_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES FARROW DF
-    farrow_df = review_table(farrow_df, farrow_entry.get(), 'Farrow Data', file_function=None)
+    farrow_df, farrow_df_errors = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', file_function=None)
 
 def review_merged():
     
-    global merged_df
+    global merged_df, merged_df_errors
 
     #MAYBE: CREATE MERGED ENTRY
-    merged_df = review_table(merged_df, None, 'Merged Data', file_function=None)
+    
+    if merged_df is None:
+        print('Error: Must Merge tables first!')
+        return
+    merged_df, merged_df_errors = review_table(merged_df, merged_df_errors, None, 'Merged Data', file_function=None)
 
 def merge_cmd():
     global merged_df
@@ -143,9 +140,16 @@ def load_cmd():
     print('Loading File...................')
 
     # GET FILEPATH TO MERGED FILE
+    filepath = filedialog.askopenfilename(initialdir = "/",
+                                          title = "Select Merged File",
+                                          filetypes = [('Pickle files', '*.pickle'),
+                                                        ("all files", "*.*")])
+    
+    merged_df = pd.read_pickle(filepath)
+                                                       
 
     # DISPLAY MERGED FILE
-
+    merged_df = review_table(merged_df, None, 'Merged Data', file_function=None)
 
 def gen_report():
     print('Generating Report....................')
@@ -155,24 +159,57 @@ def gen_report():
     #JAKE ADD FUNCTION TO GENERATE REPORT
 
 def save_cmd():
+    """Save all tables to Pickle file"""
     print('Saving file(s)..............')
 
-    #ADD POPUPS TO SELECT WHAT DFs TO SAVE
+    def save_table(df, name):
 
-    if breed_df is not None:
-        #print(breed_df)
-        fileName = filedialog.asksaveasfile(initialfile='breed_df.pickle', filetypes = [('Pickle files', '*.pickle')])
-        breed_df.to_pickle(fileName.name)
+        if df is None:
+            return
+
+        popup = pdt.popup_yes_no(f'Save {name} Table?', root)
+        popup.wait_window()
+
+        if popup.response:
+            fileName = filedialog.asksaveasfile(initialfile=f'{name}_df.pickle', filetypes = [('Pickle files', '*.pickle')])
+            df.to_pickle(fileName.name)
     
-    if farrow_df is not None:
-        fileName = filedialog.asksaveasfile(initialfile='farrow_df.pickle', filetypes = [('Pickle files', '*.pickle')])
-        farrow_df.to_pickle(fileName.name)
+    save_table(breed_df, 'Breed')
 
-    if merged_df is not None:
-        fileName = filedialog.asksaveasfile(initialfile='merged_df.pickle', filetypes = [('Pickle files', '*.pickle')])
-        merged_df.to_pickle(fileName.name)
+    save_table(farrow_df, 'Farrow')
+
+    save_table(merged_df, 'Merged')
+
+def reset_cmd():
+    """Reset all Entry boxes and Tables"""
+
+    print('Reseting................')
+
+    global merged_df, merged_df_errors
+    global breed_df, breed_df_errors
+    global farrow_df, farrow_df_errors
+
+    #clear all entries and global variables
+    merged_df = None
+    merged_df_errors = None
+    breed_df = None
+    breed_df_errors = None
+    farrow_df = None
+    farrow_df_errors = None
+
+    def reset_entry(entry):
+        entry.delete(0, tk.END)
+        entry.insert(0, '')
+    #Clear entries
+    reset_entry(s_date_entry)
+    reset_entry(e_date_entry)
+    reset_entry(breed_entry)
+    reset_entry(farrow_entry)
+    reset_entry(group_entry)
 
 def close_cmd():
+    """Exit program and shutdown all screens"""
+
     print('closing file.................')
     ##ADD popup: Are you sure? 
     
@@ -261,8 +298,14 @@ review_breed_btn.grid(row=4, column=0, pady=10, padx=2)
 review_farrow_btn = tk.Button(root, text='Review Farrow', width=15, command= review_farrow)
 review_farrow_btn.grid(row=4, column=1, pady=10, padx=2)
 
+review_merge_btn = tk.Button(root, text='Review Merged', width=15, command= review_merged)
+review_merge_btn.grid(row=4, column=2, pady=10, padx=2)
+
 merge_btn = tk.Button(root, text='Merge', width=15, command=merge_cmd)
-merge_btn.grid(row=4, column=2, pady=10, padx=2)
+merge_btn.grid(row=4, column=3, pady=10, padx=2)
+
+report_btn = tk.Button(root, text='Generate Report', width=15, command=gen_report)
+report_btn.grid(row=4, column=4, pady=10, padx=2)
 
 add_btn = tk.Button(root, text='Add to Master', width=15, command=run_cmd)
 add_btn.grid(row=5, column=0, pady=2, padx=2)
@@ -273,8 +316,8 @@ load_btn.grid(row=5, column=1, pady=2, padx=2)
 save_btn = tk.Button(root, text='Save', width=15, command=save_cmd)
 save_btn.grid(row=5, column=2, pady=2, padx=2)
 
-report_btn = tk.Button(root, text='Generate Report', width=15, command=gen_report)
-report_btn.grid(row=5, column=3, pady=2, padx=2)
+reset_btn = tk.Button(root, text='Reset', width=15, command=reset_cmd)
+reset_btn.grid(row=5, column=3, pady=2, padx=2)
 
 close_btn = tk.Button(root, text='Close', width=15, command=close_cmd)
 close_btn.grid(row=5, column=4, pady=2, padx=2)
