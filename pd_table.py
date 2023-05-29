@@ -11,6 +11,7 @@ class TableApp(Frame):
             self.orig_df = df.copy()
             self.row_edit = 0
             self.col_edit = 0
+
             f = Frame(self.parent)
             f.pack(fill=BOTH,expand=1)
 
@@ -89,7 +90,7 @@ class popup_yes_no(Toplevel):
         #print('No clicked')
         self.destroy()
 
-def table_editor(root, df, errors):
+def table_editor(root, df, errors, name='Table Window'):
 
     #ADD SAVE as PICKLE feature
     
@@ -128,7 +129,7 @@ def table_editor(root, df, errors):
 
     top= Toplevel(root)
     top.geometry("1000x750")
-    top.title('Table Window')
+    top.title(name)
 
     app = TableApp(df, errors, top)
 
@@ -141,7 +142,7 @@ def table_editor(root, df, errors):
     top.wait_window()
 
     new_df = app.table.model.df
-    return new_df, isOK
+    return new_df, app.errors, isOK
 
 if __name__ == '__main__':
 
