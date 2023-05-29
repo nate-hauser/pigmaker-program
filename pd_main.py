@@ -1,7 +1,6 @@
 
 import os
 import pandas as pd
-import pickle
 import pd_table as pdt
 import tkinter as tk
 from tkinter import filedialog
@@ -9,6 +8,7 @@ import sys
 
 TESTING = True
 
+#global variables
 breed_df = None
 breed_df_errors = None
 farrow_df = None
@@ -61,6 +61,10 @@ def run_cmd():
 
 
 def review_table(df, df_errors, filepath, table_name='Table Data', file_function=None):
+    """
+    Generic function to display dataframes in an editable table.
+    If necessary, create dataframe from filepath entry.
+    """
 
     # **********************ERROR CHECKS**********************
     if df is None:
@@ -101,21 +105,21 @@ def review_table(df, df_errors, filepath, table_name='Table Data', file_function
     return df, df_errors
 
 def review_breed():
-    
+    """Display Breed dataframe for editing"""
     global breed_df, breed_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES BREED DF
     breed_df, breed_df_errors = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', file_function=None)
 
 def review_farrow():
-    
+    """Display farrow dataframe for editing"""
     global farrow_df, farrow_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES FARROW DF
     farrow_df, farrow_df_errors = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', file_function=None)
 
 def review_merged():
-    
+    """Display merged dataframe for editing"""
     global merged_df, merged_df_errors
 
     #MAYBE: CREATE MERGED ENTRY
@@ -126,6 +130,8 @@ def review_merged():
     merged_df, merged_df_errors = review_table(merged_df, merged_df_errors, None, 'Merged Data', file_function=None)
 
 def merge_cmd():
+    """Command to combine Breed and Farrow tables then display result"""
+
     global merged_df
     print('Merging File.................')
 
@@ -136,6 +142,7 @@ def merge_cmd():
     # merged_df = review_table(merged_df_raw, None, 'Merged Data', None)
 
 def load_cmd():
+    """Load in an existing merged table"""
     global merged_df
     print('Loading File...................')
 
@@ -152,6 +159,7 @@ def load_cmd():
     merged_df = review_table(merged_df, None, 'Merged Data', file_function=None)
 
 def gen_report():
+    """Generate a report of data"""
     print('Generating Report....................')
 
     #ADD ERROR CHECKS
