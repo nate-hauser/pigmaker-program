@@ -47,17 +47,18 @@ def run_cmd():
     
     #FUNCTION CALL: breed_df, farrow_df, breed_errors, farrow_errors = funct(breed_file, farrow_file)
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
-
+    # farrow_df=pd.read_pickle("fdf4.pkl")
+    # breed_df = pd.read_pickle("bdf3")
     #Have user Validate
-    breed_df_raw = pd.read_pickle('testdf.pkl') #test df
-    errors = [[1,1], [2,2]]
+    # breed_df_raw = pd.read_pickle('testdf.pkl')
+    # errors = [[1,1], [2,2]]
     #errors = None
-    breed_df, breed_errors, isOK = pdt.table_editor(root, breed_df_raw, errors, name='Breed Data')
+    # breed_df, breed_errors, isOK = pdt.table_editor(root, breed_df_raw, errors, name='Breed Data')
     #print(breed_df)
 
     #if cancelled then do not do further processing
-    if not isOK:
-        return
+    # if not isOK:
+    #     return
 
 
 def review_table(df, df_errors, filepath, table_name='Table Data', file_function=None):
