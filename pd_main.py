@@ -5,6 +5,7 @@ import pd_table as pdt
 import tkinter as tk
 from tkinter import filedialog
 import sys
+#import Back_end as be
 
 TESTING = True
 
@@ -16,52 +17,29 @@ farrow_df_errors = None
 merged_df = None
 merged_df_errors = None
 
-def run_cmd():
-    global breed_df, farrow_df, merged_df
-    breed_file = breed_entry.get()
-    farrow_file = farrow_entry.get()
+def add_to_master():
+
     group_num = group_entry.get()
 
-    # **********************ERROR CHECKS**********************
+    #Error check
+    if breed_df is None:
+        print('Error: Breed Table is None')
+        return
+    if farrow_df is None:
+        print('Error: Farrow Table is None')
+        return
 
-    # if breed_file == '':
-    #     print('Error: Breed file is none')
-    #     return
-    # if farrow_file == '':
-    #     print('Error: Farrow file is none')
-    #     return
-    # if not os.path.isfile(breed_file):
-    #     print('Error: Breed file does not exist')
-    #     return
-    # if not os.path.isfile(farrow_file):
-    #     print('Error: Farrow File does not exist')
-    #     return
-    # if group_num == '':
-    #     print('Error: Please Enter Group Number')
+    popup = pdt.popup_yes_no('Proceed to update Master?', root)
+    popup.wait_window()
+
+    if popup.response:
+        print('Updating Master File')
+        #JAKE: ADD MASTER FUNCTION
 
 
-    #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
-    # if breed_file.endswith('.pkl') or breed_file.endswith('.pickle'):
-    #     breed_df = pd.read_pickle(breed_file)
-    # else:
-    
-    #FUNCTION CALL: breed_df, farrow_df, breed_errors, farrow_errors = funct(breed_file, farrow_file)
-            #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
-    # farrow_df=pd.read_pickle("fdf4.pkl")
-    # breed_df = pd.read_pickle("bdf3")
-    #Have user Validate
-    # breed_df_raw = pd.read_pickle('testdf.pkl')
-    # errors = [[1,1], [2,2]]
-    #errors = None
-    # breed_df, breed_errors, isOK = pdt.table_editor(root, breed_df_raw, errors, name='Breed Data')
-    #print(breed_df)
-
-    #if cancelled then do not do further processing
-    # if not isOK:
-    #     return
 
 
-def review_table(df, df_errors, filepath, table_name='Table Data', file_function=None):
+def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_function=None, df_error_function=None):
     """
     Generic function to display dataframes in an editable table.
     If necessary, create dataframe from filepath entry.
@@ -80,10 +58,10 @@ def review_table(df, df_errors, filepath, table_name='Table Data', file_function
         #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
         if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
             df_raw = pd.read_pickle(filepath)
-            df_errors_raw = None
+            df_errors_raw = df_error_function(df)
         else:
             #FUNCTION CALL: 
-            #df_raw, df_errors = file_function(filepath) 
+            #df_raw, df_errors = pdf_to_df_function(filepath) 
             # filepath would be a path to the pdf
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
 
@@ -110,14 +88,14 @@ def review_breed():
     global breed_df, breed_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES BREED DF
-    breed_df, breed_df_errors = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', file_function=None)
+    breed_df, breed_df_errors = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', pdf_to_df_function="be.pdf_to_breed")
 
 def review_farrow():
     """Display farrow dataframe for editing"""
     global farrow_df, farrow_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES FARROW DF
-    farrow_df, farrow_df_errors = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', file_function=None)
+    farrow_df, farrow_df_errors = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', pdf_to_df_function="be.pdf_to_farrow")
 
 def review_merged():
     """Display merged dataframe for editing"""
@@ -128,7 +106,7 @@ def review_merged():
     if merged_df is None:
         print('Error: Must Merge tables first!')
         return
-    merged_df, merged_df_errors = review_table(merged_df, merged_df_errors, None, 'Merged Data', file_function=None)
+    merged_df, merged_df_errors = review_table(merged_df, merged_df_errors, None, 'Merged Data', pdf_to_df_function=None)
 
 def merge_cmd():
     """Command to combine Breed and Farrow tables then display result"""
@@ -147,6 +125,8 @@ def load_cmd():
     global merged_df
     print('Loading File...................')
 
+    if merged_df is not None:
+        popup = pdt.popup_yes_no('Merged Table already exists')
     # GET FILEPATH TO MERGED FILE
     filepath = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select Merged File",
@@ -158,6 +138,7 @@ def load_cmd():
 
     # DISPLAY MERGED FILE
     merged_df = review_table(merged_df, None, 'Merged Data', file_function=None)
+
 
 def gen_report():
     """Generate a report of data"""
@@ -187,7 +168,7 @@ def save_cmd():
 
     save_table(farrow_df, 'Farrow')
 
-    save_table(merged_df, 'Merged')
+    #save_table(merged_df, 'Merged')
 
 def reset_cmd():
     """Reset all Entry boxes and Tables"""
@@ -221,8 +202,11 @@ def close_cmd():
 
     print('closing file.................')
     ##ADD popup: Are you sure? 
-    
-    root.destroy()
+    close_popup = pdt.popup_yes_no('Are you sure you want to close?', root)
+    close_popup.wait_window()
+
+    if close_popup.response:
+        root.destroy()
 
 def fileBrowse(entry):
     
@@ -307,29 +291,29 @@ review_breed_btn.grid(row=4, column=0, pady=10, padx=2)
 review_farrow_btn = tk.Button(root, text='Review Farrow', width=15, command= review_farrow)
 review_farrow_btn.grid(row=4, column=1, pady=10, padx=2)
 
-review_merge_btn = tk.Button(root, text='Review Merged', width=15, command= review_merged)
-review_merge_btn.grid(row=4, column=2, pady=10, padx=2)
+# review_merge_btn = tk.Button(root, text='Review Merged', width=15, command= review_merged)
+# review_merge_btn.grid(row=4, column=2, pady=10, padx=2)
 
-merge_btn = tk.Button(root, text='Merge', width=15, command=merge_cmd)
-merge_btn.grid(row=4, column=3, pady=10, padx=2)
+# merge_btn = tk.Button(root, text='Merge', width=15, command=merge_cmd)
+# merge_btn.grid(row=4, column=3, pady=10, padx=2)
 
 report_btn = tk.Button(root, text='Generate Report', width=15, command=gen_report)
-report_btn.grid(row=4, column=4, pady=10, padx=2)
+report_btn.grid(row=4, column=2, pady=10, padx=2)
 
-add_btn = tk.Button(root, text='Add to Master', width=15, command=run_cmd)
+add_btn = tk.Button(root, text='Add to Master', width=15, command=add_to_master)
 add_btn.grid(row=5, column=0, pady=2, padx=2)
 
-load_btn = tk.Button(root, text='Load', width=15, command=load_cmd)
-load_btn.grid(row=5, column=1, pady=2, padx=2)
+# load_btn = tk.Button(root, text='Load', width=15, command=load_cmd)
+# load_btn.grid(row=5, column=1, pady=2, padx=2)
 
 save_btn = tk.Button(root, text='Save', width=15, command=save_cmd)
-save_btn.grid(row=5, column=2, pady=2, padx=2)
+save_btn.grid(row=5, column=1, pady=2, padx=2)
 
 reset_btn = tk.Button(root, text='Reset', width=15, command=reset_cmd)
-reset_btn.grid(row=5, column=3, pady=2, padx=2)
+reset_btn.grid(row=5, column=2, pady=2, padx=2)
 
 close_btn = tk.Button(root, text='Close', width=15, command=close_cmd)
-close_btn.grid(row=5, column=4, pady=2, padx=2)
+close_btn.grid(row=5, column=3, pady=2, padx=2)
 
 
 
