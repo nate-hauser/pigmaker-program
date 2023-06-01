@@ -19,7 +19,15 @@ import pytesseract
 from img2table.document import PDF
 from img2table.ocr import TesseractOCR
 
-
+code_dict = {22: "Savaged", 21: "Ruptures", 27: "Starvation"}
+for key in [1, 13, 20, 26]:
+    code_dict[key] = "Low Viability"
+for key in [10, 12, 28]:
+    code_dict[key] = "Laid On"
+for key in [23, 30]:
+    code_dict[key] = "Strep"
+for key in [2, 3, 7, 9, 15, 25, 31]:
+    code_dict[key] = "Other"
 # Scanning pngs using Textract
 def extract_data(input_document):
     pages = convert_from_path(input_document,
@@ -71,45 +79,62 @@ def general_clean(df1):
 
 # Convert date columns to datetime data type
 def convert_to_date(df1, column_list):
-    dates_error_list = []
     for x in column_list:
         for i, value in enumerate(df1[x]):
+            if not pd.notna(value):
+                continue
+            else:
+                value=str(value)
+                if len(value)<=2:
+                    df1.at[i,x]=pd.to_datetime("09"+value+"23", format="%m%d%y").date()
+                elif len(value)>2:
+                    df1.at[i,x]=pd.to_datetime(value + "23", format="%m%d%y").date()
+
+    return df1
+
+
+def convert_to_numeric(df1, columns_list):
+
+    for x in columns_list:
+        for i, value in enumerate(df1[x]):
+            df1.at[i, x] = pd.to_numeric(value)
+
+    return df1
+
+def produce_numeric_errors(df,cols_list):
+    numeric_error_list=[]
+    for x in cols_list:
+        for i, value in enumerate(df[x]):
+            try:
+                pd.to_numeric(value)
+
+            except ParserError as pe:
+                numeric_error_list.append([i,df.columns.get_loc(x)])
+
+            except ValueError as e:
+                numeric_error_list.append([i,df.columns.get_loc(x)])
+
+    return numeric_error_list
+
+def produce_date_errors(df,cols_list):
+    dates_error_list = []
+    for x in cols_list:
+        for i, value in enumerate(df[x]):
             try:
                 if not pd.notna(value):
                     continue
                 else:
-                    value=str(value)
-                    if len(value)<=2:
-                        df1.at[i,x]=pd.to_datetime("09"+value+"23", format="%m%d%y").date()
-                    elif len(value)>2:
-                        df1.at[i,x]=pd.to_datetime(value + "23", format="%m%d%y").date()
+                    value = str(value)
+                    if len(value) <= 2:
+                        pd.to_datetime("09" + value + "23", format="%m%d%y").date()
+                    elif len(value) > 2:
+                        pd.to_datetime(value + "23", format="%m%d%y").date()
             except ParserError as pe:
-                dates_error_list.append([i,df1.columns.get_loc(x)])
+                dates_error_list.append([i, df.columns.get_loc(x)])
             except ValueError as e:
-                dates_error_list.append([i,df1.columns.get_loc(x)])
-        # df1[x] = pd.to_datetime(df1[x]).dt.date
-    return df1, dates_error_list
+                dates_error_list.append([i, df.columns.get_loc(x)])
 
-
-def convert_to_numeric(df1, columns_list):
-    numeric_error_list=[]
-    for x in columns_list:
-        for i, value in enumerate(df1[x]):
-            try:
-                df1.at[i, x] = pd.to_numeric(value)
-            except ParserError as pe:
-                numeric_error_list.append([i,df1.columns.get_loc(x)])
-                # print(value, "is causing an error in column", x, "and is in row", i)
-                # df1.at[i, x] = input("What would you like to change this value to? ")
-            except ValueError as e:
-                numeric_error_list.append([i,df1.columns.get_loc(x)])
-                # print(value, "is causing an error in column", x, "and is in row", i)
-                # df1.at[i, x] = input("What would you like to change this value to? ")
-
-
-        # df1[x] = pd.to_numeric(df1[x], downcast='unsigned')
-
-    return df1, numeric_error_list
+    return dates_error_list
 
 
 def fill_table(df1):
@@ -144,15 +169,6 @@ def farrowing_clean(df1):
     error_list2=[]
     t_data,isOKAY = pdt.table_editor(df1,error_list2)
 
-    code_dict = {22: "Savaged", 21: "Ruptures", 27: "Starvation"}
-    for key in [1, 13, 20, 26]:
-        code_dict[key] = "Low Viability"
-    for key in [10, 12, 28]:
-        code_dict[key] = "Laid On"
-    for key in [23, 30]:
-        code_dict[key] = "Strep"
-    for key in [2, 3, 7, 9, 15, 25, 31]:
-        code_dict[key] = "Other"
     # Convert codes to columns
     df1["Low Viability"] = 0
     df1["Laid On"] = 0
@@ -187,21 +203,70 @@ def farrowing_clean(df1):
 
 
 def breeding_clean(df1):
-    df1 = general_clean(df1)
     df1.replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV', 'B': 'BV', 'A': 'AC', 'H': 'HR',"C":"CJ"}, inplace=True)
-    dates_list = ["Date Bred" + str(i) for i in range(1, 4)]
-    # df1[dates_list] += "23"
-    error_list=[]
-    df1, error_list = convert_to_date(df1, dates_list)
-    error_list1=[]
-    t_data, isOKAY = pdt.table_editor(df1,error_list1)
-    print(t_data)
 
-    return t_data
 
-# def produce_errors(df1,date_list,numeric_list):
-# to do
+    return df1
 
+def breed_produce_errors(df1):
+    dates_cols_list = ["Date Bred1","Date Bred2","Date Bred3","LW"]
+    breeder_list = ["BV","AC","CJ","HR"]
+    error_list = []
+    for x in ["HC1","Breeder1","HC2","Breeder2","HC3","Breeder3"]:
+        for i, value in enumerate(df1[x]):
+            if value not in breeder_list and pd.notna(value):
+                error_list.append([i,df1.columns.get_loc(x)])
+
+    error_list.extend(produce_date_errors(df1,dates_cols_list))
+
+    return error_list
+
+
+def farrow_produce_errors(df1):
+    global code_dict
+    dates_cols_list = ["Date Farrowed","Date Weaned"]
+    numeric_cols_list = ["Crate#","P","#L","S","#M","#W"]
+    error_dict = {r"\\": "1", "I": "1", "o": "0", "O": "0", "&": "9", "a": "9", "/": "1"}
+    df1[numeric_cols_list] = df1[numeric_cols_list].replace(error_dict, regex=True)
+    error_list = []
+    for i in range(1, 5):
+        for count, x in enumerate(df1["C" + str(i)]):
+            is_num_deaths = True
+            num_deaths = []
+            death_code = []
+            if pd.notna(x):
+                for j in x:
+                    if j == '-':
+                        is_num_deaths = False
+
+                    elif is_num_deaths:
+                        num_deaths.append(j)
+
+                    else:
+                        death_code.append(j)
+
+                deaths = ''.join(num_deaths)
+                code = ''.join(death_code)
+                if int(code) not in code_dict.keys() or not deaths.isdigit():
+                    error_list.append([count,df1.columns.get_loc("C"+str(i))])
+    error_list.extend(produce_date_errors(df1,dates_cols_list))
+    error_list.extend(produce_numeric_errors(df1,numeric_cols_list))
+
+    return error_list
+def pdf_to_breed(filepath):
+    df = extract_data(filepath)
+    df = general_clean(df)
+    df.replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV', 'B': 'BV', 'A': 'AC', 'H': 'HR', "C": "CJ"}, inplace=True)
+    error_list = breed_produce_errors(df)
+
+    return df, error_list
+
+def pdf_to_farrow(filepath):
+    df = extract_data(filepath)
+    df = general_clean(df)
+    error_list = farrow_produce_errors(df)
+
+    return df, error_list
 
 def generate_report(df1, df2):
     df3 = df1.merge(df2, how='outer', on="Sow ID")
