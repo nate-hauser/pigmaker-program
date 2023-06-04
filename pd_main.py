@@ -228,7 +228,6 @@ root= tk.Tk()
 root.geometry("740x500")
 
 #****************************Dates**********************************
-b_date_row = 0
 
 s_date_label = tk.Label(root, text='Start Date', fg='black', font=('Arial', 14))
 s_date_label.grid(row=0, column=1)
