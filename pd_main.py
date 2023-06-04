@@ -191,8 +191,12 @@ def reset_cmd():
         entry.delete(0, tk.END)
         entry.insert(0, '')
     #Clear entries
-    reset_entry(s_date_entry)
-    reset_entry(e_date_entry)
+    reset_entry(breed_s_date_entry)
+    reset_entry(breed_e_date_entry)
+    reset_entry(farrow_s_date_entry)
+    reset_entry(farrow_e_date_entry)
+    reset_entry(wean_s_date_entry)
+    reset_entry(wean_e_date_entry)
     reset_entry(breed_entry)
     reset_entry(farrow_entry)
     reset_entry(group_entry)
@@ -213,7 +217,7 @@ def fileBrowse(entry):
     filepath = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select a File",
                                           filetypes = (("PDF files", "*.pdf"),
-                                                       ('Pickle files', '*.pickle'),
+                                                       ('Pickle files', '*.pickle *.pkl'),
                                                         ("all files", "*.*")))
     entry.delete(0, tk.END)
     entry.insert(0, filepath)
@@ -221,47 +225,74 @@ def fileBrowse(entry):
 #Create an instance of Tkinter frame or window
 root= tk.Tk()
 #Set the geometry of tkinter frame
-root.geometry("720x400")
+root.geometry("740x500")
 
 #****************************Dates**********************************
-s_date_label = tk.Label(root, text='Start Date', fg='black', font=('Arial', 14))
-s_date_label.grid(row=0, column=0)
+b_date_row = 0
 
-s_date_entry = tk.Entry(root)
-s_date_entry.grid(row =0, column=1)
+s_date_label = tk.Label(root, text='Start Date', fg='black', font=('Arial', 14))
+s_date_label.grid(row=0, column=1)
 
 e_date_label = tk.Label(root, text='End Date', fg='black', font=('Arial', 14))
 e_date_label.grid(row=0, column=3)
 
-e_date_entry = tk.Entry(root)
-e_date_entry.grid(row =0, column=4)
+breed_date_label = tk.Label(root, text='Breeding', fg='black', font=('Arial', 14))
+breed_date_label.grid(row=1, column=0)
 
+breed_s_date_entry = tk.Entry(root)
+breed_s_date_entry.grid(row=1, column=1)
+
+breed_e_date_entry = tk.Entry(root)
+breed_e_date_entry.grid(row=1, column=3)
+
+farrow_date_label = tk.Label(root, text='Farrowing', fg='black', font=('Arial', 14))
+farrow_date_label.grid(row=2, column=0)
+
+farrow_s_date_entry = tk.Entry(root)
+farrow_s_date_entry.grid(row=2, column=1)
+
+farrow_e_date_entry = tk.Entry(root)
+farrow_e_date_entry.grid(row=2, column=3)
+
+wean_date_label = tk.Label(root, text='Weaning', fg='black', font=('Arial', 14))
+wean_date_label.grid(row=3, column=0)
+
+wean_s_date_entry = tk.Entry(root)
+wean_s_date_entry.grid(row=3, column=1)
+
+wean_e_date_entry = tk.Entry(root)
+wean_e_date_entry.grid(row=3, column=3)
+
+end_date_row = 3 # Used for placing widgets in the correct row
 #****************************File Entry**********************************
+file_row = end_date_row + 1
+
 breed_label = tk.Label(root, text='Breed file', fg='black', font=('Arial', 14))
-breed_label.grid(row=1, column=0, pady=5)
+breed_label.grid(row=file_row, column=0, pady=5)
 
 breed_entry = tk.Entry(root)
-breed_entry.grid(row =1, column=1, pady=5)
+breed_entry.grid(row=file_row, column=1, pady=5)
 
 breed_browse = tk.Button(root, text='Browse', width=10, command=lambda: fileBrowse(breed_entry))
-breed_browse.grid(row=1, column=2, padx=5)
+breed_browse.grid(row=file_row, column=2, padx=5)
 
 farrow_label = tk.Label(root, text='Farrow file', fg='black', font=('Arial', 14))
-farrow_label.grid(row=1, column=3, pady=5)
+farrow_label.grid(row=file_row, column=3, pady=5)
 
 farrow_entry = tk.Entry(root)
-farrow_entry.grid(row =1, column=4, pady=5)
+farrow_entry.grid(row=file_row, column=4, pady=5)
 
 farrow_browse = tk.Button(root, text='Browse', width=10, command=lambda: fileBrowse(farrow_entry))
-farrow_browse.grid(row=1, column=5, padx=5)
+farrow_browse.grid(row=file_row, column=5, padx=5)
+
+group_row = file_row + 1
 
 group_label = tk.Label(root, text='Group Number', fg='black', font=('Arial', 14))
-group_label.grid(row=2, column=0, pady=5, padx=5)
+group_label.grid(row=group_row, column=0, pady=5, padx=5)
 
 group_entry = tk.Entry(root)
-group_entry.grid(row=2, column=1, pady=5)
-# breed_file = breed_entry.get()
-# farrow_file = None
+group_entry.grid(row=group_row, column=1, pady=5)
+
 
 #****************************Print Output**********************************
 class PrintLogger: 
@@ -270,11 +301,14 @@ class PrintLogger:
  
     def write(self, text): 
         self.textbox.insert(tk.END, text)
+
+output_row = group_row + 1
+
 output_lbl = tk.Label(root, text='Output', fg='black', font=('Arial', 14))
-output_lbl.grid(row=3, column=0)
+output_lbl.grid(row=output_row, column=0)
 
 textbox = tk.Text(root, height=10, width=50) 
-textbox.grid(row=3, column=1, columnspan=4, pady=20) 
+textbox.grid(row=output_row, column=1, columnspan=4, pady=20) 
 
 printlogger = PrintLogger(textbox)
 
@@ -283,13 +317,13 @@ if not TESTING:
 
 #****************************Process Control**********************************
 
-#proc_frame = tk.Frame(root).grid(row=4, column=0, columnspan=5)
+review_row = output_row +1
 
 review_breed_btn = tk.Button(root, text='Review Breed', width=15, command= review_breed)
-review_breed_btn.grid(row=4, column=0, pady=10, padx=2)
+review_breed_btn.grid(row=review_row, column=0, pady=10, padx=2)
 
 review_farrow_btn = tk.Button(root, text='Review Farrow', width=15, command= review_farrow)
-review_farrow_btn.grid(row=4, column=1, pady=10, padx=2)
+review_farrow_btn.grid(row=review_row, column=1, pady=10, padx=2)
 
 # review_merge_btn = tk.Button(root, text='Review Merged', width=15, command= review_merged)
 # review_merge_btn.grid(row=4, column=2, pady=10, padx=2)
@@ -298,22 +332,24 @@ review_farrow_btn.grid(row=4, column=1, pady=10, padx=2)
 # merge_btn.grid(row=4, column=3, pady=10, padx=2)
 
 report_btn = tk.Button(root, text='Generate Report', width=15, command=gen_report)
-report_btn.grid(row=4, column=2, pady=10, padx=2)
+report_btn.grid(row=review_row, column=2, pady=10, padx=2)
+
+command_row = review_row + 1
 
 add_btn = tk.Button(root, text='Add to Master', width=15, command=add_to_master)
-add_btn.grid(row=5, column=0, pady=2, padx=2)
+add_btn.grid(row=command_row, column=0, pady=2, padx=2)
 
 # load_btn = tk.Button(root, text='Load', width=15, command=load_cmd)
 # load_btn.grid(row=5, column=1, pady=2, padx=2)
 
 save_btn = tk.Button(root, text='Save', width=15, command=save_cmd)
-save_btn.grid(row=5, column=1, pady=2, padx=2)
+save_btn.grid(row=command_row, column=1, pady=2, padx=2)
 
 reset_btn = tk.Button(root, text='Reset', width=15, command=reset_cmd)
-reset_btn.grid(row=5, column=2, pady=2, padx=2)
+reset_btn.grid(row=command_row, column=2, pady=2, padx=2)
 
 close_btn = tk.Button(root, text='Close', width=15, command=close_cmd)
-close_btn.grid(row=5, column=3, pady=2, padx=2)
+close_btn.grid(row=command_row, column=3, pady=2, padx=2)
 
 
 
