@@ -17,27 +17,45 @@ farrow_df_errors = None
 merged_df = None
 merged_df_errors = None
 
-def add_to_master():
 
-    group_num = group_entry.get()
+def error_checks():
+    isOK = True
 
     #Error check
     if breed_df is None:
         print('Error: Breed Table is None')
-        return
+        isOK = False
     if farrow_df is None:
         print('Error: Farrow Table is None')
+        isOK = False
+    
+    if len(breed_df_errors) > 0:
+        print('Error: Breeding table contains errors. Please Review.')
+        isOK = False
+    if len(farrow_df_errors) > 0:
+        print('Error: Breeding table contains errors. Please Review.')
+        isOK = False
+
+    return isOK
+
+def add_to_master():
+
+    group_num = group_entry.get()
+
+    #If error exists, stop here
+    isOK = error_checks()
+    if not isOK:
         return
 
     popup = pdt.popup_yes_no('Proceed to update Master?', root)
     popup.wait_window()
 
-    if popup.response:
-        print('Updating Master File')
-        #JAKE: ADD MASTER FUNCTION
-
-
-
+    if not popup.response:
+        return
+    
+    print('Updating Master Spreadsheet...................')
+    #JAKE: ADD MASTER FUNCTION
+    print('Master Spreadsheet Update Complete.')
 
 def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_function=None, df_error_function=None):
     """
@@ -48,12 +66,12 @@ def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_fun
     # **********************ERROR CHECKS**********************
     if df is None:
         
-        # if filepath == '':
-        #     print('Error: file is none')
-        #     return
-        # if not os.path.isfile(filepath):
-        #     print('Error: file does not exist')
-        #     return
+        if filepath == '':
+            print('Error: file is none')
+            return
+        if not os.path.isfile(filepath):
+            print('Error: file does not exist')
+            return
 
         #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
         if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
@@ -146,6 +164,10 @@ def gen_report():
     print('Generating Report....................')
 
     #ADD ERROR CHECKS
+    #If error exists, stop here
+    isOK = error_checks()
+    if not isOK:
+        return
 
     #JAKE ADD FUNCTION TO GENERATE REPORT
     be.generate_report(breed_df,farrow_df)
@@ -173,12 +195,17 @@ def save_cmd():
 
 def reset_cmd():
     """Reset all Entry boxes and Tables"""
-
-    print('Reseting................')
-
     global merged_df, merged_df_errors
     global breed_df, breed_df_errors
     global farrow_df, farrow_df_errors
+
+    popup = pdt.popup_yes_no('Clear all stored Process data?', root)
+    popup.wait_window()
+
+    if not popup.response:
+        return
+
+    print('Reseting................')
 
     #clear all entries and global variables
     merged_df = None
@@ -222,6 +249,8 @@ def fileBrowse(entry):
                                                         ("all files", "*.*")))
     entry.delete(0, tk.END)
     entry.insert(0, filepath)
+
+
 
 #Create an instance of Tkinter frame or window
 root= tk.Tk()
