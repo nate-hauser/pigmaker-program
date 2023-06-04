@@ -5,7 +5,7 @@ import pd_table as pdt
 import tkinter as tk
 from tkinter import filedialog
 import sys
-#import Back_end as be
+import Back_end as be
 
 TESTING = True
 
@@ -58,16 +58,16 @@ def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_fun
         #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
         if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
             df_raw = pd.read_pickle(filepath)
-            df_errors_raw = df_error_function(df)
+            df_errors_raw = df_error_function(df_raw)
         else:
-            #FUNCTION CALL: 
-            #df_raw, df_errors = pdf_to_df_function(filepath) 
+            # FUNCTION CALL:
+            df_raw, df_errors_raw = pdf_to_df_function(filepath)
             # filepath would be a path to the pdf
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
 
             #For testing purposes
-            df_raw = pd.read_pickle('testdf.pkl') #test df
-            df_errors_raw = [[1,1], [2,2]]
+            # df_raw = pd.read_pickle('testdf.pkl')
+            # df_errors_raw = [[1,1], [2,2]]
     else:
         df_raw = df
         df_errors_raw = df_errors
@@ -76,26 +76,27 @@ def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_fun
     df_new, df_errors_new, isOK = pdt.table_editor(root, df_raw, df_errors_raw, name=table_name)
 
     #if cancelled then do not do further processing and return original df
-    if not isOK:
-        return df, df_errors
+    if isOK:
+        df = df_new
+        df_errors = df_errors_new
     
-    df = df_new
-    df_errors = df_errors_new
-    return df, df_errors
+
+    return df, df_errors, isOK
 
 def review_breed():
     """Display Breed dataframe for editing"""
     global breed_df, breed_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES BREED DF
-    breed_df, breed_df_errors = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', pdf_to_df_function="be.pdf_to_breed")
+    breed_df, breed_df_errors, isOK = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', pdf_to_df_function=be.pdf_to_breed, df_error_function=be.breed_produce_errors)
+
 
 def review_farrow():
     """Display farrow dataframe for editing"""
     global farrow_df, farrow_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES FARROW DF
-    farrow_df, farrow_df_errors = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', pdf_to_df_function="be.pdf_to_farrow")
+    farrow_df, farrow_df_errors, isOK = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', pdf_to_df_function=be.pdf_to_farrow,df_error_function=be.farrow_produce_errors)
 
 def review_merged():
     """Display merged dataframe for editing"""
@@ -145,9 +146,9 @@ def gen_report():
     print('Generating Report....................')
 
     #ADD ERROR CHECKS
-    
-    #JAKE ADD FUNCTION TO GENERATE REPORT
 
+    #JAKE ADD FUNCTION TO GENERATE REPORT
+    be.generate_report(breed_df,farrow_df)
 def save_cmd():
     """Save all tables to Pickle file"""
     print('Saving file(s)..............')
