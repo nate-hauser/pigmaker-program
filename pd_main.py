@@ -130,7 +130,7 @@ def load_cmd():
     # GET FILEPATH TO MERGED FILE
     filepath = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select Merged File",
-                                          filetypes = [('Pickle files', '*.pickle'),
+                                          filetypes = [('Pickle files', '*.pickle *.pkl'),
                                                         ("all files", "*.*")])
     
     merged_df = pd.read_pickle(filepath)
@@ -161,7 +161,7 @@ def save_cmd():
         popup.wait_window()
 
         if popup.response:
-            fileName = filedialog.asksaveasfile(initialfile=f'{name}_df.pickle', filetypes = [('Pickle files', '*.pickle')])
+            fileName = filedialog.asksaveasfile(initialfile=f'{name}_df.pickle', filetypes = [('Pickle files', '*.pickle *.pkl')])
             df.to_pickle(fileName.name)
     
     save_table(breed_df, 'Breed')
