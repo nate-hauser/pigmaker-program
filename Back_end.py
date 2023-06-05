@@ -81,9 +81,7 @@ def general_clean(df1):
 def convert_to_date(df1, column_list):
     for x in column_list:
         for i, value in enumerate(df1[x]):
-            if not pd.notna(value):
-                continue
-            else:
+            if pd.notna(value):
                 value=str(value)
                 if len(value)<=2:
                     df1.at[i,x]=pd.to_datetime("09"+value+"23", format="%m%d%y").date()
@@ -119,11 +117,15 @@ def produce_numeric_errors(df,cols_list):
 def produce_date_errors(df,cols_list):
     dates_error_list = []
     for x in cols_list:
+        if "Bred" in x:
+            start =
+        elif "Weaned" in x:
+
+        elif "Farrowed" in x:
+
         for i, value in enumerate(df[x]):
             try:
-                if not pd.notna(value):
-                    continue
-                else:
+                if pd.notna(value):
                     value = str(value)
                     if len(value) <= 2:
                         pd.to_datetime("09" + value + "23", format="%m%d%y").date()
@@ -138,9 +140,6 @@ def produce_date_errors(df,cols_list):
 
 
 def fill_table(df1):
-    #     for i in range (0,len(df1)):
-    #         if pd.isna(df1.at[i,"Last Weaned"]) and pd.notna(df1.at[i,"Date Bred1"]):
-    #             df1.at[i,"Last Weaned"]=df1.at[i-1,"Last Weaned"]
 
     for i in range(0, len(df1)):
         if pd.isna(df1.at[i, "Date Weaned"]) and pd.notna(df1.at[i, "Date Farrowed"]):
@@ -154,63 +153,9 @@ def fill_table(df1):
 
     return df1
 
-def farrowing_clean(df1):
-    df1 = general_clean(df1)
-    numeric_list = ["Crate#", "P", "#L", "#S", "#M", "#W"]
-    error_dict = {r"\\": "1", "I": "1", "o": "0", "O": "0", "&": "9", "a": "9","/":"1"}
-    df1[numeric_list]=df1[numeric_list].replace(error_dict, regex=True)
-    error_list=[]
-    dates_list = ["Date Farrowed", "Date Weaned"]
-    # df1[dates_list] += "23"
-    df1, error_list = convert_to_date(df1, dates_list)
-
-    df1, error_list1 = convert_to_numeric(df1, numeric_list)
-    error_list.extend(error_list1)
-    error_list2=[]
-    t_data,isOKAY = pdt.table_editor(df1,error_list2)
-
-    # Convert codes to columns
-    df1["Low Viability"] = 0
-    df1["Laid On"] = 0
-    df1["Strep"] = 0
-    df1["Scours"] = 0
-    df1["Other"] = 0
-    df1["Savaged"] = 0
-    df1["Ruptures"] = 0
-    df1["Starvation"] = 0
-    df1["Unknown"] = 0
-    for i in range(1, 5):
-        for count, x in enumerate(df1["C" + str(i)]):
-            is_num_deaths = True
-            num_deaths = []
-            death_code = []
-            if pd.notna(x):
-                for j in x:
-                    if j == '-':
-                        is_num_deaths = False
-
-                    elif is_num_deaths:
-                        num_deaths.append(j)
-
-                    else:
-                        death_code.append(j)
-
-                deaths = ''.join(num_deaths)
-                code = ''.join(death_code)
-                df1.at[count, code_dict[int(code)]] = int(deaths)
-        df1.drop("C" + str(i), axis=1, inplace=True)
-    return t_data
-
-
-def breeding_clean(df1):
-    df1.replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV', 'B': 'BV', 'A': 'AC', 'H': 'HR',"C":"CJ"}, inplace=True)
-
-
-    return df1
-
 def breed_produce_errors(df1):
     dates_cols_list = ["Date Bred1","Date Bred2","Date Bred3","LW"]
-    breeder_list = ["BV","AC","CJ","HR"]
+    breeder_list = ["BV","AC","CJ","HR","JS","J"]
     error_list = []
     for x in ["HC1","Breeder1","HC2","Breeder2","HC3","Breeder3"]:
         for i, value in enumerate(df1[x]):
@@ -225,7 +170,7 @@ def breed_produce_errors(df1):
 def farrow_produce_errors(df1):
     global code_dict
     dates_cols_list = ["Date Farrowed","Date Weaned"]
-    numeric_cols_list = ["Crate#","P","#L","S","#M","#W"]
+    numeric_cols_list = ["Crate#","P","#L","#S","#M","#W"]
     error_dict = {r"\\": "1", "I": "1", "o": "0", "O": "0", "&": "9", "a": "9", "/": "1"}
     df1[numeric_cols_list] = df1[numeric_cols_list].replace(error_dict, regex=True)
     error_list = []
@@ -256,7 +201,7 @@ def farrow_produce_errors(df1):
 def pdf_to_breed(filepath):
     df = extract_data(filepath)
     df = general_clean(df)
-    df.replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV', 'B': 'BV', 'A': 'AC', 'H': 'HR', "C": "CJ"}, inplace=True)
+    df.replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV', 'B': 'BV', 'A': 'AC', 'H': 'HR', "C": "CJ","J":"JS"}, inplace=True)
     error_list = breed_produce_errors(df)
 
     return df, error_list
@@ -268,24 +213,68 @@ def pdf_to_farrow(filepath):
 
     return df, error_list
 
-def generate_report(df1, df2):
-    df3 = df1.merge(df2, how='outer', on="Sow ID")
+def pre_report_processing(df1,df2):
+    for i in range (0,len(df1)):
+        if i == 0 and pd.isna(df1.at[i,"LW"]):
+            break
+        elif pd.isna(df1.at[i,"Last Weaned"]) and pd.notna(df1.at[i,"Date Bred1"]):
+            df1.at[i,"Last Weaned"]=df1.at[i-1,"Last Weaned"]
+
+    df1 = convert_to_date(df1,["Date Bred1","Date Bred2","Date Bred3","LW"])
+    df2 = convert_to_date(df2,["Date Farrowed","Date Weaned"])
+    df2 = convert_to_numeric(df2,["Crate#","P","#L","#S","#M","#W"])
+
+    df2["Low Viability"] = 0
+    df2["Laid On"] = 0
+    df2["Strep"] = 0
+    df2["Scours"] = 0
+    df2["Other"] = 0
+    df2["Savaged"] = 0
+    df2["Ruptures"] = 0
+    df2["Starvation"] = 0
+    df2["Unknown"] = 0
+    for i in range(1, 5):
+        for count, x in enumerate(df2["C" + str(i)]):
+            is_num_deaths = True
+            num_deaths = []
+            death_code = []
+            if pd.notna(x):
+                for j in x:
+                    if j == '-':
+                        is_num_deaths = False
+
+                    elif is_num_deaths:
+                        num_deaths.append(j)
+
+                    else:
+                        death_code.append(j)
+
+                deaths = ''.join(num_deaths)
+                code = ''.join(death_code)
+                df2.at[count, code_dict[int(code)]] = int(deaths)
+        df2.drop("C" + str(i), axis=1, inplace=True)
+
+    df2[["#L","#S","#M","#W"]]=df2[["#L","#S","#M","#W"]].replace(np.NaN,0)
+
+    df3 = df2.merge(df1, how='outer', on="Sow ID")
+
+    return df3
+def generate_report(df3,group_num):
+
     df3 = fill_table(df3)
     length=len(df3)
     df3=df3.replace("Ll",11)
     df3=df3.replace("J","JS")
     df3=df3.replace("BY","BV")
-    df3.insert(loc=17,column="Unknown",value=np.NaN)
-    for i, value in enumerate (df3["Date Farrowed"]):
-        if pd.notna(value):
-            df3.at[i,"Unknown"]=0
+    df3=df3.replace("nan",np.NaN)
+    # df3.insert(loc=17,column="Unknown",value=np.NaN)
+    # for i, value in enumerate (df3["Date Farrowed"]):
+    #     if pd.notna(value):
+    #         df3.at[i,"Unknown"]=0
 
-    num_list=["#L","#S","#M","#W"]
-    df3[num_list]=df3[num_list].replace(np.NaN,0)
-    group_num = input("What group are you inputting? ")
     df3["Group Number"] = int(group_num)
-    df3,error=convert_to_numeric(df3,["P","#L","#S","#M","#W","Crate#","Group Number"])
-    df3,error=convert_to_date(df3,["Date Farrowed","Date Weaned","LW","Date Bred1","Date Bred2","Date Bred3"])
+    df3=convert_to_numeric(df3,["P","#L","#S","#M","#W","Crate#","Group Number"])
+    df3=convert_to_date(df3,["Date Farrowed","Date Weaned","LW","Date Bred1","Date Bred2","Date Bred3"])
     diff = df3["#L"].sum() - (df3["Low Viability"].sum() + df3["Laid On"].sum() + df3["Strep"].sum() + df3["Scours"].sum()
                        + df3["Other"].sum() + df3["Savaged"].sum() + df3["Ruptures"].sum() + df3["Starvation"].sum())
     balance = 0
@@ -296,6 +285,9 @@ def generate_report(df1, df2):
         df3 = pd.concat([df3,pd.DataFrame([{"Sow ID": "Y", "#W": diff-df3["#W"].sum(),"Group Number":group_num}])], ignore_index=True)
         balance = 2
 
+    print(df3["#L"].sum()-df3["#W"].sum())
+    print(df3["Low Viability"].sum() + df3["Laid On"].sum() + df3["Strep"].sum() + df3["Scours"].sum()
+                       + df3["Other"].sum() + df3["Savaged"].sum() + df3["Ruptures"].sum() + df3["Starvation"].sum() +df3["Unknown"].sum())
     pdf = FPDF()
     pdf.add_page()
 
@@ -375,7 +367,7 @@ def generate_report(df1, df2):
 
     preweaning_mortality = (df3["Low Viability"].sum() + df3["Laid On"].sum() + df3["Strep"].sum() + df3[
         "Scours"].sum() + df3["Other"].sum() + df3["Savaged"].sum() + df3["Ruptures"].sum() + df3[
-                                "Starvation"].sum()) / df3["#L"].sum()
+                                "Starvation"].sum()+df3["Unknown"].sum()) / df3["#L"].sum()
     pdf.cell(48, 8, "{:.2%}".format(preweaning_mortality), 1, 2, 'C')
 
 
@@ -395,7 +387,7 @@ def generate_report(df1, df2):
 
 
 
-    combo=df3
+    combo=df3.copy()
     combo["HC_combo"] = combo.apply(lambda row: list({row['HC1'], row['HC2'], row['HC3']}), axis=1)
     combo['HC_combo'] = combo['HC_combo'].apply(lambda x: [i for i in x if not (pd.isna(i) or i is None)]).astype('object')
     combo["Breeder_combo"]= combo.apply(lambda row: list({row['Breeder1'], row['Breeder2'], row['Breeder3']}), axis=1)
@@ -403,7 +395,7 @@ def generate_report(df1, df2):
 
     combo['HC_combo2'] = combo['HC_combo'].apply(tuple)
     combo['Breeder_combo2'] = combo['Breeder_combo'].apply(tuple)
-
+    print(df3)
     hc = combo.groupby(by="HC_combo2").agg({'#S':'sum',
                                            '#M':'sum',
                                            '#L':'sum',
@@ -438,8 +430,6 @@ def generate_report(df1, df2):
         pdf.cell(49, 8, "{:.2%}".format(hc.at[i,"Farrowing rate"]), 1, 0, 'C')
         pdf.cell(49,8,str(hc.at[i,"Group Number"]),1,1,'C')
 
-    print(hc)
-    print(hc.index)
 
     pdf.set_y(pdf.get_y()+10)
 
@@ -465,11 +455,8 @@ def generate_report(df1, df2):
     heat_checkers = []
     for heat_checker, farrowing_rate in sorted_dfl:
         heat_checkers.append(heat_checker)
-    print(heat_checkers)
     for i in heat_checkers:
-
         i_df = hc[hc.index.map(lambda tpl: any(str(i) in elem for elem in tpl))]
-        print (i_df)
         pdf.cell(49,8,str(i),1,0,'C')
         if i_df["Date Farrowed"].sum() == 0:
             pdf.cell(49,8,"NA",1,0,'C')
@@ -538,11 +525,9 @@ def generate_report(df1, df2):
     breeders = []
     for breeder, farrowing_rate in sorted_dfl:
         breeders.append(breeder)
-    print (breeders)
     for i in breeders:
 
         i_df = br[br.index.map(lambda tpl: any(str(i) in elem for elem in tpl))]
-        print(i_df)
         pdf.cell(49, 8, str(i), 1, 0, 'C')
         if i_df["Date Farrowed"].sum() == 0:
             pdf.cell(49, 8, "NA", 1, 0, 'C')
@@ -564,4 +549,5 @@ def generate_report(df1, df2):
     return df3
 
 def output_to_excel(df):
-    df.to_excel(r"C:\Users\jakeh\output.xlsx",index=False)
+    reader = pd.read_excel(r'output.xlsx')
+    df.to_excel(r"C:\Users\jakeh\output.xlsx",index=False,startrow=len(reader)+1)

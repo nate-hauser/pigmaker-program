@@ -19,8 +19,6 @@ merged_df_errors = None
 
 def add_to_master():
 
-    group_num = group_entry.get()
-
     #Error check
     if breed_df is None:
         print('Error: Breed Table is None')
@@ -35,7 +33,7 @@ def add_to_master():
     if popup.response:
         print('Updating Master File')
         #JAKE: ADD MASTER FUNCTION
-
+        be.output_to_excel(merged_df)
 
 
 
@@ -143,12 +141,15 @@ def load_cmd():
 
 def gen_report():
     """Generate a report of data"""
+
+    global merged_df
     print('Generating Report....................')
 
     #ADD ERROR CHECKS
 
     #JAKE ADD FUNCTION TO GENERATE REPORT
-    be.generate_report(breed_df,farrow_df)
+    merged_df = be.pre_report_processing(breed_df,farrow_df)
+    be.generate_report(merged_df,group_entry.get())
 def save_cmd():
     """Save all tables to Pickle file"""
     print('Saving file(s)..............')
