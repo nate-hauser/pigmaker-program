@@ -57,29 +57,39 @@ def add_to_master():
     #JAKE: ADD MASTER FUNCTION
     print('Master Spreadsheet Update Complete.')
 
-def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_function=None, df_error_function=None):
+def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_function=None, df_error_function=None, start_date = None, end_date = None, **kwargs):
     """
     Generic function to display dataframes in an editable table.
     If necessary, create dataframe from filepath entry.
     """
+
+    isOK = False
 
     # **********************ERROR CHECKS**********************
     if df is None:
         
         if filepath == '':
             print('Error: file is none')
-            return
+            return df, df_errors, isOK
         if not os.path.isfile(filepath):
             print('Error: file does not exist')
-            return
+            return df, df_errors, isOK
+        #Date Entry Check
+        if start_date is None:
+            print('Error: Please Enter a Start Date.')
+            return df, df_errors, isOK
+        if end_date is None:
+            print('Error: Please Enter an End Date.')
+            return df, df_errors, isOK
 
         #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
         if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
             df_raw = pd.read_pickle(filepath)
-            df_errors_raw = df_error_function(df_raw)
+            df_errors_raw = df_error_function(df_raw, start_date, end_date, **kwargs)
         else:
             # FUNCTION CALL:
-            df_raw, df_errors_raw = pdf_to_df_function(filepath)
+            df_raw = pdf_to_df_function(filepath)
+            df_errors_raw = df_error_function(df_raw, start_date, end_date, **kwargs)
             # filepath would be a path to the pdf
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
 
@@ -97,7 +107,6 @@ def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_fun
     if isOK:
         df = df_new
         df_errors = df_errors_new
-    
 
     return df, df_errors, isOK
 
@@ -106,7 +115,9 @@ def review_breed():
     global breed_df, breed_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES BREED DF
-    breed_df, breed_df_errors, isOK = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', pdf_to_df_function=be.pdf_to_breed, df_error_function=be.breed_produce_errors)
+    breed_df, breed_df_errors, isOK = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', 
+                                                   pdf_to_df_function=be.pdf_to_breed, df_error_function=be.breed_produce_errors, 
+                                                   start_date=breed_s_date_entry.get(), end_date=breed_e_date_entry.get())
 
 
 def review_farrow():
@@ -114,7 +125,17 @@ def review_farrow():
     global farrow_df, farrow_df_errors
 
     #JAKE: REPLACE FILE FUNCTION WITH FUNCTION THAT GENERATES FARROW DF
-    farrow_df, farrow_df_errors, isOK = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', pdf_to_df_function=be.pdf_to_farrow,df_error_function=be.farrow_produce_errors)
+    if wean_s_date_entry.get() is None:
+        print('Error: Please Enter a Weaning Start Date.')
+        return
+    if wean_e_date_entry.get() is None:
+        print('Error: Please Enter a Weaning End Date.')
+        return
+
+    farrow_df, farrow_df_errors, isOK = review_table(farrow_df, farrow_df_errors, farrow_entry.get(), 'Farrow Data', 
+                                                     pdf_to_df_function=be.pdf_to_farrow,df_error_function=be.farrow_produce_errors,
+                                                     start_date=farrow_s_date_entry.get(), end_date=farrow_e_date_entry.get(),
+                                                     wean_start_date=wean_s_date_entry.get(), wean_end_date=wean_e_date_entry.get())
 
 def review_merged():
     """Display merged dataframe for editing"""
