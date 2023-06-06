@@ -18,6 +18,7 @@ from PIL import Image
 import pytesseract
 from img2table.document import PDF
 from img2table.ocr import TesseractOCR
+from datetime import timedelta
 
 code_dict = {22: "Savaged", 21: "Ruptures", 27: "Starvation"}
 for key in [1, 13, 20, 26]:
@@ -29,6 +30,8 @@ for key in [23, 30]:
 for key in [2, 3, 7, 9, 15, 25, 31]:
     code_dict[key] = "Other"
 # Scanning pngs using Textract
+
+
 def extract_data(input_document):
     pages = convert_from_path(input_document,
                               poppler_path=r"C:\Users\jakeh\poppler-0.68.0_x86\poppler-0.68.0\bin")
@@ -78,7 +81,8 @@ def general_clean(df1):
 
 
 # Convert date columns to datetime data type
-def convert_to_date(df1, column_list):
+def convert_to_date(df1, column_list, breed_s=None,breed_e=None,farrow_s=None,
+                        farrow_e=None,wean_s=None,wean_e=None):
     for x in column_list:
         for i, value in enumerate(df1[x]):
             if pd.notna(value):
@@ -114,23 +118,49 @@ def produce_numeric_errors(df,cols_list):
 
     return numeric_error_list
 
-def produce_date_errors(df,cols_list):
+def produce_date_errors(df,cols_list, breed_s=None,breed_e=None,farrow_s=None,
+                        farrow_e=None,wean_s=None,wean_e=None):
     dates_error_list = []
     for x in cols_list:
         if "Bred" in x:
-            start =
-        elif "Weaned" in x:
-
+            start = breed_s.get()
+            start = pd.to_datetime(start).date()
+            end = breed_e.get()
+            end = pd.to_datetime(end).date()
         elif "Farrowed" in x:
+            start = farrow_s.get()
+            start = pd.to_datetime(start).date()
+            end = farrow_e.get()
+            end = pd.to_datetime(end).date()
+        else:
+            start = wean_s.get()
+            start = pd.to_datetime(start).date()
+            end = wean_e.get()
+            end = pd.to_datetime(end).date()
 
+        possible_dates = []
+        num_days = (end-start).days
+        for i in range(num_days+1):
+            possible_dates.append(start+timedelta(days=i))
         for i, value in enumerate(df[x]):
             try:
                 if pd.notna(value):
-                    value = str(value)
                     if len(value) <= 2:
-                        pd.to_datetime("09" + value + "23", format="%m%d%y").date()
-                    elif len(value) > 2:
-                        pd.to_datetime(value + "23", format="%m%d%y").date()
+                        if not (int(value) in [y.day for y in possible_dates]):
+                            dates_error_list.append([i, df.columns.get_loc(x)])
+
+                    elif len(value) == 4:
+                        four_digit_dates = [str(y.month)+str(y.day) if len(str(y.day)) == 2 else str(y.month)+"0"+str(y.day) for y in possible_dates]
+                        four_digit_dates = [y if len(y) == 4 else "0"+y for y in four_digit_dates]
+                        if not value in four_digit_dates:
+                            dates_error_list.append([i, df.columns.get_loc(x)])
+
+                    # value = str(value)
+                    # if len(value) <= 2:
+                    #     if
+                    #     pd.to_datetime("09" + value + "23", format="%m%d%y").date()
+                    # elif len(value) > 2:
+                    #     pd.to_datetime(value + "23", format="%m%d%y").date()
             except ParserError as pe:
                 dates_error_list.append([i, df.columns.get_loc(x)])
             except ValueError as e:
@@ -153,7 +183,7 @@ def fill_table(df1):
 
     return df1
 
-def breed_produce_errors(df1):
+def breed_produce_errors(df1,breed_s,breed_e,*kwargs):
     dates_cols_list = ["Date Bred1","Date Bred2","Date Bred3","LW"]
     breeder_list = ["BV","AC","CJ","HR","JS","J"]
     error_list = []
@@ -162,12 +192,12 @@ def breed_produce_errors(df1):
             if value not in breeder_list and pd.notna(value):
                 error_list.append([i,df1.columns.get_loc(x)])
 
-    error_list.extend(produce_date_errors(df1,dates_cols_list))
+    error_list.extend(produce_date_errors(df1,dates_cols_list,breed_s,breed_e))
 
     return error_list
 
 
-def farrow_produce_errors(df1):
+def farrow_produce_errors(df1,farrow_s,farrow_e,wean_s,wean_e,*kwargs):
     global code_dict
     dates_cols_list = ["Date Farrowed","Date Weaned"]
     numeric_cols_list = ["Crate#","P","#L","#S","#M","#W"]
@@ -194,34 +224,34 @@ def farrow_produce_errors(df1):
                 code = ''.join(death_code)
                 if int(code) not in code_dict.keys() or not deaths.isdigit():
                     error_list.append([count,df1.columns.get_loc("C"+str(i))])
-    error_list.extend(produce_date_errors(df1,dates_cols_list))
+    error_list.extend(produce_date_errors(df1,dates_cols_list,farrow_s,farrow_e,wean_s,wean_e))
     error_list.extend(produce_numeric_errors(df1,numeric_cols_list))
 
     return error_list
-def pdf_to_breed(filepath):
+def pdf_to_breed(filepath,breed_s,breed_e,**kwargs):
     df = extract_data(filepath)
     df = general_clean(df)
     df.replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV', 'B': 'BV', 'A': 'AC', 'H': 'HR', "C": "CJ","J":"JS"}, inplace=True)
-    error_list = breed_produce_errors(df)
+    error_list = breed_produce_errors(df,breed_s,breed_e)
 
     return df, error_list
 
-def pdf_to_farrow(filepath):
+def pdf_to_farrow(filepath,farrow_s,farrow_e,wean_s,wean_e,**kwargs):
     df = extract_data(filepath)
     df = general_clean(df)
-    error_list = farrow_produce_errors(df)
+    error_list = farrow_produce_errors(df,farrow_s,farrow_e,wean_s,wean_e)
 
     return df, error_list
 
-def pre_report_processing(df1,df2):
+def pre_report_processing(df1,df2,breed_s,breed_e,farrow_s,farrow_e,wean_s,wean_e):
     for i in range (0,len(df1)):
         if i == 0 and pd.isna(df1.at[i,"LW"]):
             break
         elif pd.isna(df1.at[i,"Last Weaned"]) and pd.notna(df1.at[i,"Date Bred1"]):
             df1.at[i,"Last Weaned"]=df1.at[i-1,"Last Weaned"]
 
-    df1 = convert_to_date(df1,["Date Bred1","Date Bred2","Date Bred3","LW"])
-    df2 = convert_to_date(df2,["Date Farrowed","Date Weaned"])
+    df1 = convert_to_date(df1,["Date Bred1","Date Bred2","Date Bred3","LW"],breed_s,breed_e)
+    df2 = convert_to_date(df2,["Date Farrowed","Date Weaned"],farrow_s,farrow_e,wean_s,wean_e)
     df2 = convert_to_numeric(df2,["Crate#","P","#L","#S","#M","#W"])
 
     df2["Low Viability"] = 0
@@ -273,8 +303,6 @@ def generate_report(df3,group_num):
     #         df3.at[i,"Unknown"]=0
 
     df3["Group Number"] = int(group_num)
-    df3=convert_to_numeric(df3,["P","#L","#S","#M","#W","Crate#","Group Number"])
-    df3=convert_to_date(df3,["Date Farrowed","Date Weaned","LW","Date Bred1","Date Bred2","Date Bred3"])
     diff = df3["#L"].sum() - (df3["Low Viability"].sum() + df3["Laid On"].sum() + df3["Strep"].sum() + df3["Scours"].sum()
                        + df3["Other"].sum() + df3["Savaged"].sum() + df3["Ruptures"].sum() + df3["Starvation"].sum())
     balance = 0

@@ -6,7 +6,6 @@ import tkinter as tk
 from tkinter import filedialog
 import sys
 import Back_end as be
-
 TESTING = True
 
 #global variables
@@ -40,8 +39,6 @@ def error_checks():
 
 def add_to_master():
 
-    group_num = group_entry.get()
-
     #If error exists, stop here
     isOK = error_checks()
     if not isOK:
@@ -56,7 +53,7 @@ def add_to_master():
     print('Updating Master Spreadsheet...................')
     #JAKE: ADD MASTER FUNCTION
     print('Master Spreadsheet Update Complete.')
-
+    be.output_to_excel(merged_df)
 def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_function=None, df_error_function=None):
     """
     Generic function to display dataframes in an editable table.
@@ -76,10 +73,21 @@ def review_table(df, df_errors, filepath, table_name='Table Data', pdf_to_df_fun
         #IF PICKLE FILE MAYBE SKIP THIS FUNCTION CALL
         if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
             df_raw = pd.read_pickle(filepath)
-            df_errors_raw = df_error_function(df_raw)
+            df_errors_raw = df_error_function(df_raw,breed_s=breed_s_date_entry,
+                                              breed_e=breed_e_date_entry,
+                                              farrow_s=farrow_s_date_entry,
+                                              farrow_e=farrow_e_date_entry,
+                                              wean_s=wean_s_date_entry,
+                                              wean_e=wean_e_date_entry)
         else:
             # FUNCTION CALL:
-            df_raw, df_errors_raw = pdf_to_df_function(filepath)
+            df_raw, df_errors_raw = pdf_to_df_function(filepath,
+                                                       breed_s=breed_s_date_entry,
+                                                       breed_e=breed_e_date_entry,
+                                                       farrow_s=farrow_s_date_entry,
+                                                       farrow_e=farrow_e_date_entry,
+                                                       wean_s=wean_s_date_entry,
+                                                       wean_e=wean_e_date_entry)
             # filepath would be a path to the pdf
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
 
@@ -169,8 +177,12 @@ def gen_report():
     if not isOK:
         return
 
+    merged_df = be.pre_report_processing(breed_df,farrow_df,breed_s_date_entry,
+                                         breed_e_date_entry,farrow_s_date_entry,
+                                         farrow_e_date_entry,wean_s_date_entry,
+                                         wean_e_date_entry)
     #JAKE ADD FUNCTION TO GENERATE REPORT
-    be.generate_report(breed_df,farrow_df)
+    be.generate_report(merged_df,group_entry.get())
 def save_cmd():
     """Save all tables to Pickle file"""
     print('Saving file(s)..............')
@@ -292,6 +304,8 @@ wean_s_date_entry.grid(row=3, column=1)
 wean_e_date_entry = tk.Entry(root)
 wean_e_date_entry.grid(row=3, column=3)
 
+start_end_dates = [breed_s_date_entry,breed_e_date_entry,farrow_s_date_entry,farrow_e_date_entry,wean_s_date_entry,wean_e_date_entry]
+
 end_date_row = 3 # Used for placing widgets in the correct row
 #****************************File Entry**********************************
 file_row = end_date_row + 1
@@ -321,7 +335,6 @@ group_label.grid(row=group_row, column=0, pady=5, padx=5)
 
 group_entry = tk.Entry(root)
 group_entry.grid(row=group_row, column=1, pady=5)
-
 
 #****************************Print Output**********************************
 class PrintLogger: 
