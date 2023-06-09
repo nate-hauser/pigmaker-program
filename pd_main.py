@@ -39,6 +39,10 @@ def error_checks():
     return isOK
 
 def are_dates_valid(start_end_dates):
+
+    """Performs two checks on inputted start and end dates. One is hat they are valid dates and the other is
+    that the end date is after the start date"""
+
     dates = list(start_end_dates.values())
     keys = list(start_end_dates.keys())
     for i in range(0, len(dates)):
