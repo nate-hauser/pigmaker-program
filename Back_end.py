@@ -211,10 +211,15 @@ def fill_table(df1):
         if pd.isna(df1.at[i, "Date Weaned"]) and pd.notna(df1.at[i, "Date Farrowed"]):
             df1.at[i, "Date Weaned"] = df1.at[i - 1, "Date Weaned"]
 
+        if pd.isna(df1.at[i,"Crate#"]) and pd.notna(df1.at[i,"Date Farrowed"]):
+            df1.at[i,"Crate#"] = df1.at[i-1,"Crate#"] + 1
+
         for count in range(1, 4):
-            for i in range(0, len(df1)):
-                if pd.isna(df1.at[i, "Breeder" + str(count)]) and pd.notna(df1.at[i, "HC" + str(count)]):
-                    df1.at[i, "Breeder" + str(count)] = df1.at[i, "HC" + str(count)]
+            for x in range(0, len(df1)):
+                if pd.isna(df1.at[x, "Breeder" + str(count)]) and pd.notna(df1.at[x, "HC" + str(count)]):
+                    df1.at[x, "Breeder" + str(count)] = df1.at[x, "HC" + str(count)]
+
+
     # Waiting to get more info
 
     return df1
@@ -266,7 +271,7 @@ def farrow_produce_errors(df1, start_end_dates):
             death_code = []
             if pd.notna(x):
                 for j in x:
-                    if j == '-':
+                    if j == '-' or j == '/':
                         is_num_deaths = False
 
                     elif is_num_deaths:
@@ -353,7 +358,7 @@ def pre_report_processing(df1, df2, start_end_dates):
             death_code = []
             if pd.notna(x):
                 for j in x:
-                    if j == '-':
+                    if j == '-' or j == '/':
                         is_num_deaths = False
 
                     elif is_num_deaths:
@@ -367,7 +372,7 @@ def pre_report_processing(df1, df2, start_end_dates):
                 df2.at[count, CODE_DICT[int(code)]] = int(deaths)
         df2.drop("C" + str(i), axis=1, inplace=True)
 
-    df2[["#L", "#S", "#M", "#W"]] = df2[["#L", "#S", "#M", "#W"]].replace(np.NaN, 0)
+    df2[["#L", "#S", "#M", "#W","P"]] = df2[["#L", "#S", "#M", "#W","P"]].replace(np.NaN, 0)
 
     df3 = df2.merge(df1, how='outer', on="Sow ID")
 
@@ -471,7 +476,7 @@ def generate_report(df3, group_num):
 
             preweaning_mortality = (df["Low Viability"].sum() + df["Laid On"].sum() + df["Strep"].sum() + df[
                 "Scours"].sum() + df["Other"].sum() + df["Savaged"].sum() + df["Ruptures"].sum() + df[
-                                        "Starvation"].sum()) / df["#L"].sum()
+                                        "Starvation"].sum() + df["Unknown"].sum()) / df["#L"].sum()
             pdf.cell(CELL_WIDTH, CELL_HEIGHT, "{:.2%}".format(preweaning_mortality), 1, 0, 'C')
 
             pdf.set_xy(pdf.get_x(), 48)
@@ -479,28 +484,6 @@ def generate_report(df3, group_num):
     make_farrowing_statistics_table([Half1, Half2, df3])
 
     pdf.set_xy(10, 105)
-
-    num_farrowed = df3["Date Farrowed"].count()
-    farrowing_rate = num_farrowed / length
-
-    # Making comments underneath farrowing statistics table
-    pdf.cell(0, 10, "*The overall farrowing rate is: " + "{:.2%}".format(farrowing_rate) + " (" + str(
-        num_farrowed) + " out of " + str(length) + ")", 0, 1, 'L')
-
-    weaned_pigs = df3["#W"].sum()
-    pdf.cell(0, 10, "*The total number of weaned pigs is " + str(weaned_pigs), 0, 1, 'L')
-
-    if balance == 1:
-        pdf.multi_cell(0, 10, "*" + str(int(diff - df3["#W"].sum())) +
-                       " unknown deaths were added to imaginary sow 'Y' to make the total born live minus the total dead equal the total weaned",
-                       0, 'L')
-    elif balance == 2:
-        pdf.multi_cell(0, 10, "*" + str(int(df3["#W"].sum() - diff)) +
-                       "weaned pigs were added to imaginary sow 'Y' to make the total born live minus the total dead "
-                       "equal the total weaned",
-                       0, 'L')
-    else:
-        pdf.multi_cell(0, 10, "* The total born live minus the total dead equal the total weaned", 0, 'L')
 
     combo = df3.copy()
 
@@ -550,6 +533,32 @@ def generate_report(df3, group_num):
                          0, 'C')
             pdf.cell(CELL_WIDTH, CELL_HEIGHT, "{:.2%}".format(df.at[i, "Farrowing rate"]), 1, 0, 'C')
             pdf.cell(CELL_WIDTH, CELL_HEIGHT, str(df.at[i, "Group Number"]), 1, 1, 'C')
+
+    heat_checker_combos = generate_combos(["HC1", "HC2", "HC3"])
+
+    nonbred_pigs = int(heat_checker_combos.at[(),"Group Number"])
+
+    num_farrowed = df3["Date Farrowed"].count()
+    farrowing_rate = num_farrowed / (length + nonbred_pigs)
+
+    # Making comments underneath farrowing statistics table
+    pdf.cell(0, 10, "*The overall farrowing rate is: " + "{:.2%}".format(farrowing_rate) + " (" + str(
+        num_farrowed) + " out of " + str(length + nonbred_pigs) + ")", 0, 1, 'L')
+
+    weaned_pigs = df3["#W"].sum()
+    pdf.cell(0, 10, "*The total number of weaned pigs is " + str(weaned_pigs), 0, 1, 'L')
+
+    if balance == 1:
+        pdf.multi_cell(0, 10, "*" + str(int(diff - df3["#W"].sum())) +
+                       " unknown deaths were added to imaginary sow 'Y' to make the total born live minus the total dead equal the total weaned",
+                       0, 'L')
+    elif balance == 2:
+        pdf.multi_cell(0, 10, "*" + str(int(df3["#W"].sum() - diff)) +
+                       "weaned pigs were added to imaginary sow 'Y' to make the total born live minus the total dead "
+                       "equal the total weaned",
+                       0, 'L')
+    else:
+        pdf.multi_cell(0, 10, "* The total born live minus the total dead equal the total weaned", 0, 'L')
 
     pdf.set_y(150)
 
