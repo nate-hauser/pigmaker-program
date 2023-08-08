@@ -44,6 +44,8 @@ def extract_data(input_document):
             tdoc = Document(resp)
             dfs.append(pd.DataFrame(convert_table_to_list(trp_table=tdoc.pages[0].tables[0])))
 
+    pd.concat(dfs).to_pickle("breedg5.pkl")
+
     return pd.concat(dfs)
 
 
@@ -76,7 +78,8 @@ def general_clean(df1):
     # df1.replace("NOT_SELECTED,",np.NaN,inplace=True)
     df1.rename(columns=df1.iloc[0], inplace=True)
     df1.rename(columns={'': "Crate#"}, inplace=True)
-    df1.drop(df1[df1['Sow ID'] == ''].index, inplace=True)
+    df1.drop(df1[(df1['Sow ID'] == '')].index, inplace=True)
+    df1 = df1.dropna(subset=['Sow ID'])
     df1.reset_index(drop=True, inplace=True)
     df1.columns = df1.columns.str.strip()
     df1.drop(df1[df1['Sow ID'] == 'Sow ID'].index, inplace=True)
@@ -89,22 +92,22 @@ def convert_to_date(df1, column_list, start_end_dates):
     """Converts values from string to pandas date format"""
 
     for x in column_list:
-        if not x == "LW":
-            possible_dates, possible_days, four_digit_dates = generate_possible_dates(x, start_end_dates)
 
-            for i, value in enumerate(df1[x]):
-                if pd.notna(value):
-                    value = str(value)
-                    if len(value) <= 2:
-                        converted_value_location = possible_days.index(int(value))
-                        df1.at[i, x] = possible_dates[converted_value_location]
-                    elif len(value) == 4:
-                        converted_value_location = four_digit_dates.index(value)
-                        df1.at[i, x] = possible_dates[converted_value_location]
+        possible_dates, possible_days, four_digit_dates = generate_possible_dates(x, start_end_dates)
 
-        else:
-            for i, value in enumerate(df1[x]):
-                df1.at[i, x] = pd.to_datetime(value).date()
+        for i, value in enumerate(df1[x]):
+            if pd.notna(value):
+                value = str(value)
+                if len(value) <= 2:
+                    converted_value_location = possible_days.index(int(value))
+                    df1.at[i, x] = possible_dates[converted_value_location]
+                elif len(value) == 4:
+                    converted_value_location = four_digit_dates.index(value)
+                    df1.at[i, x] = possible_dates[converted_value_location]
+
+        # else:
+        #     for i, value in enumerate(df1[x]):
+        #         df1.at[i, x] = pd.to_datetime(value).date()
 
     return df1
 
@@ -147,6 +150,10 @@ def generate_possible_dates(col, start_end_dates):
     elif "Farrowed" in col:
         start = pd.to_datetime(start_end_dates["farrow start"]).date()
         end = pd.to_datetime(start_end_dates["farrow end"]).date()
+
+    elif col == "LW":
+        start = pd.to_datetime(start_end_dates["breed end"]).date() - timedelta(days=365)
+        end = pd.to_datetime(start_end_dates["breed end"]).date() - timedelta(days=1)
     else:
         start = pd.to_datetime(start_end_dates["wean start"]).date()
         end = pd.to_datetime(start_end_dates["wean end"]).date()
@@ -171,35 +178,36 @@ def produce_date_errors(df, cols_list, start_end_dates):
 
     dates_error_list = []
     for x in cols_list:
-        if not x == "LW":
-            possible_dates, possible_days, four_digit_dates = generate_possible_dates(x, start_end_dates)
 
-            for i, value in enumerate(df[x]):
-                try:
-                    if pd.notna(value):
-                        if len(value) <= 2:
-                            if not int(value) in possible_days:
-                                dates_error_list.append([i, df.columns.get_loc(x)])
+        possible_dates, possible_days, four_digit_dates = generate_possible_dates(x, start_end_dates)
 
-                        elif len(value) == 4:
-                            if not value in four_digit_dates:
-                                dates_error_list.append([i, df.columns.get_loc(x)])
-
-                        else:
+        for i, value in enumerate(df[x]):
+            try:
+                if pd.notna(value):
+                    if len(value) <= 2:
+                        if not int(value) in possible_days:
                             dates_error_list.append([i, df.columns.get_loc(x)])
 
-                except ParserError as pe:
-                    dates_error_list.append([i, df.columns.get_loc(x)])
-                except ValueError as e:
-                    dates_error_list.append([i, df.columns.get_loc(x)])
-        else:
-            for i, value in enumerate(df[x]):
-                try:
-                    if pd.notna(value):
-                        pd.to_datetime(value)
+                    elif len(value) == 4:
+                        if not value in four_digit_dates:
+                            dates_error_list.append([i, df.columns.get_loc(x)])
 
-                except ValueError as e:
-                    dates_error_list.append([i, df.columns.get_loc(x)])
+                    else:
+                        dates_error_list.append([i, df.columns.get_loc(x)])
+
+            except ParserError as pe:
+                dates_error_list.append([i, df.columns.get_loc(x)])
+            except ValueError as e:
+                dates_error_list.append([i, df.columns.get_loc(x)])
+        # else:
+        #     for i, value in enumerate(df[x]):
+        #         try:
+        #             if pd.notna(value):
+        #
+        #                 pd.to_datetime(value)
+        #
+        #         except ValueError as e:
+        #             dates_error_list.append([i, df.columns.get_loc(x)])
 
     return dates_error_list
 
@@ -219,6 +227,9 @@ def fill_table(df1):
                 if pd.isna(df1.at[x, "Breeder" + str(count)]) and pd.notna(df1.at[x, "HC" + str(count)]):
                     df1.at[x, "Breeder" + str(count)] = df1.at[x, "HC" + str(count)]
 
+        if i != 0 and pd.isna(df1.at[i,"LW"]):
+            df1.at[i,"LW"] = df1.at[i-1,"LW"]
+
 
     # Waiting to get more info
 
@@ -230,14 +241,15 @@ def breed_produce_errors(df1, start_end_dates):
 
     df1.replace({"NOT_SELECTED,": np.NaN}, inplace=True)
 
-    dates_cols_list = ["Date Bred1", "Date Bred2", "Date Bred3", "LW"]
+    dates_cols_list = ["Date Bred1", "Date Bred2", "Date Bred3","LW"]
     breeder_hc_cols = ["HC1", "Breeder1", "HC2", "Breeder2", "HC3", "Breeder3"]
     breeder_list = ["BV", "AC", "CJ", "HR", "JS", "J", "NS"]
+    df1[breeder_hc_cols] = df1[breeder_hc_cols].applymap(lambda x: x.upper() if isinstance(x, str) else x)
     df1[breeder_hc_cols] = df1[breeder_hc_cols].replace({'AL': 'AC', 'BL': 'BV', 'PV': 'BV',
                                                          'B': 'BV', 'A': 'AC', 'H': 'HR',
                                                          "C": "CJ", "J": "JS", "P": "BV", "8": "BV",
-                                                         "it": "HR", "lt": "HR", "3": "BV", "It": "HR", "f": "BV",
-                                                         "b": "BV"})
+                                                         "LT": "HR", "3": "BV", "IT": "HR", "F": "BV",
+                                                         "3V":"BV","BU":"BV","BR":"BV","4C":"AC"})
     df1[dates_cols_list] = df1[dates_cols_list].replace(
         {"1b": "16", "1>": "17", "lb": "16", "1)": "17", "lt": "16", "It": "16"})
 
@@ -332,11 +344,6 @@ def pdf_to_farrow(filepath):
 def pre_report_processing(df1, df2, start_end_dates):
     """ Converts columns to their correct data type and merges the farrow and breed dataframes on Sow ID"""
 
-    for i in range(0, len(df1)):
-        if i == 0 and pd.isna(df1.at[i, "LW"]):
-            break
-        elif pd.isna(df1.at[i, "Last Weaned"]) and pd.notna(df1.at[i, "Date Bred1"]):
-            df1.at[i, "Last Weaned"] = df1.at[i - 1, "Last Weaned"]
 
     df1 = convert_to_date(df1, ["Date Bred1", "Date Bred2", "Date Bred3", "LW"], start_end_dates)
     df2 = convert_to_date(df2, ["Date Farrowed", "Date Weaned"], start_end_dates)
@@ -369,7 +376,7 @@ def pre_report_processing(df1, df2, start_end_dates):
 
                 deaths = ''.join(num_deaths)
                 code = ''.join(death_code)
-                df2.at[count, CODE_DICT[int(code)]] = int(deaths)
+                df2.at[count, CODE_DICT[int(code)]] += int(deaths)
         df2.drop("C" + str(i), axis=1, inplace=True)
 
     df2[["#L", "#S", "#M", "#W","P"]] = df2[["#L", "#S", "#M", "#W","P"]].replace(np.NaN, 0)
