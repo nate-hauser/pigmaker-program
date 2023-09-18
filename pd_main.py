@@ -4,8 +4,10 @@ import pandas as pd
 import pd_table as pdt
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import simpledialog
 import sys
 import Back_end as be
+import pickle
 
 TESTING = False
 
@@ -21,6 +23,8 @@ merged_df_errors = None
 def error_checks():
     isOK = True
 
+    if merged_df is not None:
+        return True
     #Error check
     if breed_df is None:
         print('Error: Breed Table is None')
@@ -40,7 +44,7 @@ def error_checks():
 
 def are_dates_valid(start_end_dates):
 
-    """Performs two checks on inputted start and end dates. One is hat they are valid dates and the other is
+    """Performs two checks on inputted start and end dates. One is that they are valid dates and the other is
     that the end date is after the start date"""
 
     dates = list(start_end_dates.values())
@@ -78,7 +82,7 @@ def add_to_master():
     #JAKE: ADD MASTER FUNCTION
     print('Master Spreadsheet Update Complete.')
     be.output_to_excel(merged_df)
-def review_table(df, df_errors, filepath, table_name, pdf_to_df_function, df_error_function, start_end_dates):
+def review_table(df, df_errors, filepath, table_name, pdf_to_df_function, df_error_function, start_end_dates, group_num):
     """
     Generic function to display dataframes in an editable table.
     If necessary, create dataframe from filepath entry.
@@ -87,6 +91,9 @@ def review_table(df, df_errors, filepath, table_name, pdf_to_df_function, df_err
     isOK = False
 
     # **********************ERROR CHECKS**********************
+    if group_num is None:
+        print("Please enter group number")
+        return df, df_errors, isOK
     if df is None:
         
         if filepath == '':
@@ -112,7 +119,7 @@ def review_table(df, df_errors, filepath, table_name, pdf_to_df_function, df_err
             df_errors_raw = df_error_function(df_raw, start_end_dates)
         else:
             # FUNCTION CALL:
-            df_raw = pdf_to_df_function(filepath)
+            df_raw = pdf_to_df_function(filepath, group_num)
             df_errors_raw = df_error_function(df_raw, start_end_dates)
             # filepath would be a path to the pdf
             #The errors would be a list of the sort for each cell in question: [[row1, col1], [row2, col2]]
@@ -130,6 +137,7 @@ def review_table(df, df_errors, filepath, table_name, pdf_to_df_function, df_err
     #if cancelled then do not do further processing and return original df
     if isOK:
         df = df_new
+        df.reset_index(drop=True,inplace=True)
         df_errors = df_errors_new
 
     return df, df_errors, isOK
@@ -142,10 +150,10 @@ def review_breed():
     breed_df, breed_df_errors, isOK = review_table(breed_df, breed_df_errors, breed_entry.get(), 'Breed Data', 
                                                    be.pdf_to_breed, be.breed_produce_errors,
                                                    {"breed start": breed_s_date_entry.get(),
-                                                   "breed end": breed_e_date_entry.get()})
+                                                   "breed end": breed_e_date_entry.get()},group_entry.get())
 
-    breed_df.to_pickle("breed2.pkl")
-
+    records_full_path = os.path.join(be.BREEDING_FARROWING_RECORDS_DIRECTORY, "breed" + str(group_entry.get()) + ".pkl")
+    breed_df.to_pickle(records_full_path)
 
 def review_farrow():
     """Display farrow dataframe for editing"""
@@ -164,10 +172,12 @@ def review_farrow():
                                                      {"farrow start": farrow_s_date_entry.get(),
                                                       "farrow end": farrow_e_date_entry.get(),
                                                       "wean start": wean_s_date_entry.get(),
-                                                      "wean end": wean_e_date_entry.get()}
+                                                      "wean end": wean_e_date_entry.get()},
+                                                     group_entry.get()
                                                      )
 
-    farrow_df.to_pickle("farrow2.pkl")
+    records_full_path = os.path.join(be.BREEDING_FARROWING_RECORDS_DIRECTORY, "farrow" + str(group_entry.get()) + ".pkl")
+    farrow_df.to_pickle(records_full_path)
 
 def review_merged():
     """Display merged dataframe for editing"""
@@ -200,7 +210,7 @@ def load_cmd():
     if merged_df is not None:
         popup = pdt.popup_yes_no('Merged Table already exists')
     # GET FILEPATH TO MERGED FILE
-    filepath = filedialog.askopenfilename(initialdir = "/",
+    filepath = filedialog.askopenfilename(initialdir = be.GROUP_RECORDS_DIRECTORY,
                                           title = "Select Merged File",
                                           filetypes = [('Pickle files', '*.pickle *.pkl'),
                                                         ("all files", "*.*")])
@@ -209,7 +219,7 @@ def load_cmd():
                                                        
 
     # DISPLAY MERGED FILE
-    merged_df = review_table(merged_df, None, 'Merged Data', file_function=None)
+    # merged_df = review_table(merged_df, None, 'Merged Data', file_function=None)
 
 
 def gen_report():
@@ -217,6 +227,9 @@ def gen_report():
 
     global merged_df
     print('Generating Report....................')
+    if merged_df is not None:
+        merged_df = be.generate_report(merged_df,group_entry.get())
+        return
 
     #ADD ERROR CHECKS
     #If error exists, stop here
@@ -233,31 +246,13 @@ def gen_report():
 
     if not are_dates_valid(start_end_dates):
         return
+    merged_df = be.pre_report_processing(breed_df,farrow_df,start_end_dates, group_entry.get())
 
-    merged_df = be.pre_report_processing(breed_df,farrow_df,start_end_dates)
-    #JAKE ADD FUNCTION TO GENERATE REPORT
-    merged_df = be.generate_report(merged_df,group_entry.get())
-def save_cmd():
-    """Save all tables to Pickle file"""
-    print('Saving file(s)..............')
+    records_full_path = os.path.join(be.GROUP_RECORDS_DIRECTORY,
+                                         "Group" + str(group_entry.get()) + ".pkl")
+    merged_df.to_pickle(records_full_path)
 
-    def save_table(df, name):
-
-        if df is None:
-            return
-
-        popup = pdt.popup_yes_no(f'Save {name} Table?', root)
-        popup.wait_window()
-
-        if popup.response:
-            fileName = filedialog.asksaveasfile(initialfile=f'{name}_df.pickle', filetypes = [('Pickle files', '*.pickle *.pkl')])
-            df.to_pickle(fileName.name)
-    
-    save_table(breed_df, 'Breed')
-
-    save_table(farrow_df, 'Farrow')
-
-    #save_table(merged_df, 'Merged')
+    merged_df = be.generate_report(merged_df, group_entry.get())
 
 def reset_cmd():
     """Reset all Entry boxes and Tables"""
@@ -308,7 +303,7 @@ def close_cmd():
 
 def fileBrowse(entry):
     
-    filepath = filedialog.askopenfilename(initialdir = "/",
+    filepath = filedialog.askopenfilename(initialdir = be.DOWNLOADS_DIRECTORY,
                                           title = "Select a File",
                                           filetypes = (("PDF files", "*.pdf"),
                                                        ('Pickle files', '*.pickle *.pkl'),
@@ -316,6 +311,63 @@ def fileBrowse(entry):
     entry.delete(0, tk.END)
     entry.insert(0, filepath)
 
+def modify_breeder_list():
+    root = tk.Tk()
+    root.title("Breeder List")
+
+    listbox = tk.Listbox(root)
+    listbox.pack()
+
+    with open("breeders.pkl", 'rb') as file:
+        breeders = (pickle.load(file))
+
+    for i in breeders:
+        listbox.insert(tk.END, i)
+
+    def remove_item():
+        selected_index = listbox.curselection()
+        if selected_index:
+            selected_index = selected_index[0]
+            listbox.delete(selected_index)
+
+    def add_item():
+        new_item = simpledialog.askstring("Add Item", "Enter a new item:")
+        if new_item:
+            listbox.insert(tk.END, new_item)
+
+    def edit_item():
+        selected_index = listbox.curselection()
+        if selected_index:
+            selected_index = selected_index[0]
+            updated_item = simpledialog.askstring("Edit Item", "Edit selected item:",
+                                                  initialvalue=listbox.get(selected_index))
+            if updated_item:
+                listbox.delete(selected_index)
+                listbox.insert(selected_index, updated_item)
+
+    def save_list():
+        updated_breeders = set()
+        for i in listbox.get(0, tk.END):
+            updated_breeders.add(i)
+
+        with open("breeders.pkl", "wb") as file:
+            pickle.dump(updated_breeders, file)
+
+        root.destroy()
+
+
+
+    add_button = tk.Button(root, text="Add Item", command=add_item)
+    remove_button = tk.Button(root, text="Remove Item", command=remove_item)
+    edit_button = tk.Button(root,text="Edit Item",command=edit_item)
+    save_button = tk.Button(root, text="Save", command=save_list)
+
+    add_button.pack()
+    edit_button.pack()
+    remove_button.pack()
+    save_button.pack()
+
+    root.mainloop()
 
 
 #Create an instance of Tkinter frame or window
@@ -434,17 +486,19 @@ command_row = review_row + 1
 add_btn = tk.Button(root, text='Add to Master', width=15, command=add_to_master)
 add_btn.grid(row=command_row, column=0, pady=2, padx=2)
 
-# load_btn = tk.Button(root, text='Load', width=15, command=load_cmd)
-# load_btn.grid(row=5, column=1, pady=2, padx=2)
+load_btn = tk.Button(root, text="Load Group Record", width=15, command=load_cmd)
+load_btn.grid(row=command_row, column=2, pady=2, padx=2)
 
-save_btn = tk.Button(root, text='Save', width=15, command=save_cmd)
-save_btn.grid(row=command_row, column=1, pady=2, padx=2)
+breeders_btn = tk.Button(root, text='Breeders', width=15, command=modify_breeder_list)
+breeders_btn.grid(row=command_row, column=1, pady=2, padx=2)
 
 reset_btn = tk.Button(root, text='Reset', width=15, command=reset_cmd)
-reset_btn.grid(row=command_row, column=2, pady=2, padx=2)
+reset_btn.grid(row=command_row, column=3, pady=2, padx=2)
 
 close_btn = tk.Button(root, text='Close', width=15, command=close_cmd)
-close_btn.grid(row=command_row, column=3, pady=2, padx=2)
+close_btn.grid(row=command_row, column=4, pady=2, padx=2)
+
+
 
 
 
