@@ -372,6 +372,30 @@ def modify_breeder_list():
 
     root.mainloop()
 
+def save_dates():
+    my_dict = {"breed_start":breed_s_date_entry.get(),"breed_end":breed_e_date_entry.get(),"farrowing_start":farrow_s_date_entry.get()
+               , "farrowing_end":farrow_e_date_entry.get(),"weaning_start":wean_s_date_entry.get(),"weaning_end":wean_e_date_entry.get()
+               , "group_num":group_entry.get(),"total_weaned":total_wean_entry.get()}
+    with open ("dates.pkl",'wb') as f:
+        pickle.dump(my_dict,f)
+
+    print("Dates have been saved!")
+def load_dates():
+    try:
+        with open("dates.pkl",'rb') as f:
+            my_dict = pickle.load(f)
+            entrys = [breed_s_date_entry,breed_e_date_entry,farrow_s_date_entry,farrow_e_date_entry,wean_s_date_entry
+                      ,wean_e_date_entry,group_entry,total_wean_entry]
+            keys = list(my_dict.keys())
+            values = list(my_dict.values())
+            for i in range(0,len(keys)):
+                entrys[i].insert(0,values[i])
+
+
+
+    except FileNotFoundError:
+        print("There are no saved dates")
+
 
 #Create an instance of Tkinter frame or window
 root= tk.Tk()
@@ -506,6 +530,12 @@ reset_btn.grid(row=command_row, column=3, pady=2, padx=2)
 
 close_btn = tk.Button(root, text='Close', width=15, command=close_cmd)
 close_btn.grid(row=command_row, column=4, pady=2, padx=2)
+
+save_dates_btn = tk.Button(root, text="Save Dates", width=15,command=save_dates)
+save_dates_btn.grid(row=review_row,column=3,pady=10,padx=2)
+
+load_dates_btn = tk.Button(root, text="Load Dates", width=15,command=load_dates)
+load_dates_btn.grid(row=review_row,column=4,pady=10,padx=2)
 
 
 
