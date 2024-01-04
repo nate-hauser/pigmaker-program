@@ -155,6 +155,7 @@ def review_breed():
     records_full_path = os.path.join(be.BREEDING_FARROWING_RECORDS_DIRECTORY, "breed" + str(group_entry.get()) + ".pkl")
     breed_df.to_pickle(records_full_path)
 
+
 def review_farrow():
     """Display farrow dataframe for editing"""
     global farrow_df, farrow_df_errors
@@ -216,6 +217,8 @@ def load_cmd():
                                                         ("all files", "*.*")])
     
     merged_df = pd.read_pickle(filepath)
+
+    print("File is loaded")
                                                        
 
     # DISPLAY MERGED FILE
@@ -228,7 +231,7 @@ def gen_report():
     global merged_df
     print('Generating Report....................')
     if merged_df is not None:
-        merged_df = be.generate_report(merged_df,group_entry.get())
+        merged_df = be.generate_report(merged_df,group_entry.get(),total_wean_entry.get())
         return
 
     #ADD ERROR CHECKS
@@ -252,7 +255,7 @@ def gen_report():
                                          "Group" + str(group_entry.get()) + ".pkl")
     merged_df.to_pickle(records_full_path)
 
-    merged_df = be.generate_report(merged_df, group_entry.get())
+    merged_df = be.generate_report(merged_df, group_entry.get(), total_wean_entry.get())
 
 def reset_cmd():
     """Reset all Entry boxes and Tables"""
@@ -439,6 +442,12 @@ group_label.grid(row=group_row, column=0, pady=5, padx=5)
 
 group_entry = tk.Entry(root)
 group_entry.grid(row=group_row, column=1, pady=5)
+
+total_wean_label = tk.Label(root, text='Total Weaned', fg='black', font=('Arial', 14))
+total_wean_label.grid(row=group_row, column=2, pady=5)
+
+total_wean_entry = tk.Entry(root)
+total_wean_entry.grid(row=group_row, column=3, pady=5)
 
 
 #****************************Print Output**********************************

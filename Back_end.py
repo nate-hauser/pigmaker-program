@@ -141,6 +141,8 @@ def produce_numeric_errors(df, cols_list):
         for i, value in enumerate(df[x]):
             try:
                 pd.to_numeric(value)
+                if x in ["P", "#L", "#S", "#M", "#W"] and value == value and int(value) >= 30:
+                    numeric_error_list.append([i, df.columns.get_loc(x)])
 
             except ParserError as pe:
                 numeric_error_list.append([i, df.columns.get_loc(x)])
@@ -195,6 +197,9 @@ def produce_date_errors(df, cols_list, start_end_dates):
         for i, value in enumerate(df[x]):
             try:
                 if pd.notna(value):
+                    if "/" in str(value):
+                        value = str(value).partition("/")[2]
+                        df.at[i,x] = value
                     if len(value) <= 2:
                         if not int(value) in possible_days:
                             dates_error_list.append([i, df.columns.get_loc(x)])
@@ -266,10 +271,10 @@ def breed_produce_errors(df1, start_end_dates):
         breeders_replace_dict[first_initial] = breeder
 
     breeders_replace_dict.update({"AL":"AC","BL":"BV","PV":"BV","P":"BV","8":"BV","LT":"HR","3":"BV","IT":"HR","F":"BV",
-                                  "3V":"BV","BU":"BV","BR":"BV","4C":"AC"})
+                                  "3V":"BV","BU":"BV","BR":"BV","4C":"AC","4":"AC","IS":"BV","13":"BV","R":"BV","5":"BV"})
     df1[breeder_hc_cols] = df1[breeder_hc_cols].replace(breeders_replace_dict)
     df1[dates_cols_list] = df1[dates_cols_list].replace(
-        {"1b": "16", "1>": "17", "lb": "16", "1)": "17", "lt": "16", "It": "16"})
+        {"1b": "16", "1>": "17", "lb": "16", "1)": "17", "lt": "16", "It": "16",'\\': "1","/":"1","l":"1","I":"1"})
 
     error_list = []
 
@@ -290,8 +295,8 @@ def farrow_produce_errors(df1, start_end_dates):
 
     dates_cols_list = ["Date F", "Date W"]
     numeric_cols_list = ["Crate#", "P", "#L", "#S", "#M", "#W"]
-    error_dict = {r"\\": "1", "I": "1", "o": "0", "O": "0", "&": "9", "a": "9", "/": "1"}
-    df1[numeric_cols_list] = df1[numeric_cols_list].replace(error_dict, regex=True)
+    error_dict = {"\\": "1", "I": "1", "o": "0", "O": "0", "&": "9", "a": "9", "/": "1","L":"1","l":"1","i":"1","(":"1",")":"1"}
+    df1[numeric_cols_list] = df1[numeric_cols_list].replace(error_dict)
     error_list = []
     for i in range(1, 5):
         for count, x in enumerate(df1["C" + str(i)]):
@@ -406,29 +411,26 @@ def pre_report_processing(df1, df2, start_end_dates, group_num):
     return df3
 
 
-def generate_report(df3, group_num):
+def generate_report(df3, group_num, total_weaned):
     """Takes the merged dataframe and generates a report"""
 
     length = len(df3)
+    total_weaned = int(total_weaned)
 
     # Calculate difference between total born live and total dead. This should equal the total weaned
     diff = df3["#L"].sum() - (
             df3["Low Viability"].sum() + df3["Laid On"].sum() + df3["Strep"].sum() + df3["Scours"].sum()
             + df3["Other"].sum() + df3["Savaged"].sum() + df3["Ruptures"].sum() + df3["Starvation"].sum())
-    balance = 0
 
-    # If difference does not equal the total weaned then an imaginary sow, 'Y', must be created and added deaths or
-    # weaned pigs to make total born live minus total dead equal total weaned
+    print(diff)
+    print(df3["#L"].sum())
 
-    if diff > df3["#W"].sum():
-        df3 = pd.concat(
-            [df3, pd.DataFrame([{"Sow ID": "Y", "Unknown": diff - df3["#W"].sum(), "Group Number": group_num}])],
-            ignore_index=True)
-        balance = 1
-    elif diff < df3["#W"].sum():
-        df3 = pd.concat([df3, pd.DataFrame([{"Sow ID": "Y", "#W": diff - df3["#W"].sum(), "Group Number": group_num}])],
-                        ignore_index=True)
-        balance = 2
+
+    diff2 = total_weaned - df3["#W"].sum()
+    diff3 = diff - total_weaned
+    df3 = pd.concat(
+        [df3, pd.DataFrame([{"Sow ID": "Y", "Unknown": diff3, "#W":diff2, "Group Number": group_num}])],
+        ignore_index=True)
 
     # print(df3["#L"].sum()-df3["#W"].sum())
     # print(df3["Low Viability"].sum() + df3["Laid On"].sum() + df3["Strep"].sum() + df3["Scours"].sum()
@@ -568,19 +570,13 @@ def generate_report(df3, group_num):
     weaned_pigs = df3["#W"].sum()
     pdf.cell(0, 10, "*The total number of weaned pigs is " + str(weaned_pigs), 0, 1, 'L')
 
-    if balance == 1:
-        pdf.multi_cell(0, 10, "*" + str(int(diff - df3["#W"].sum())) +
+    pdf.multi_cell(0,10, "*" + str(diff2) + " weaned pigs were added to sow 'Y'",0, 'L')
+
+    pdf.multi_cell(0, 10, "*" + str(diff3) +
                        " unknown deaths were added to imaginary sow 'Y' to make the total born live minus the total dead equal the total weaned",
                        0, 'L')
-    elif balance == 2:
-        pdf.multi_cell(0, 10, "*" + str(int(df3["#W"].sum() - diff)) +
-                       "weaned pigs were added to imaginary sow 'Y' to make the total born live minus the total dead "
-                       "equal the total weaned",
-                       0, 'L')
-    else:
-        pdf.multi_cell(0, 10, "* The total born live minus the total dead equal the total weaned", 0, 'L')
 
-    pdf.set_y(150)
+    pdf.set_y(pdf.get_y()+5)
 
     heat_checker_combos = generate_combos(["HC1", "HC2", "HC3"])
 
